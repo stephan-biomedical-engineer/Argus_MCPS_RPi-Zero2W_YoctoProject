@@ -15,6 +15,7 @@ IMAGE_INSTALL:append = " \
     htop \
     nano \
     i2c-tools \
+    kernel-modules \
 "
 
 # --- PACOTES PYTHON E APLICAÇÃO ---
@@ -27,6 +28,7 @@ IMAGE_INSTALL:append = " \
     python3-flask \
     python3-paho-mqtt \
     rpi-gpio \
+    devmem2 \
     mosquitto \
     mosquitto-clients \
     libgpiod \
@@ -36,5 +38,7 @@ IMAGE_INSTALL:append = " \
     paho-mqtt-cpp \
     paho-mqtt-c-dev \
     paho-mqtt-cpp-dev \
-    infusion-control \                  
+    infusion-control-cpp \                  
 "
+
+IMAGE_FEATURES += "read-only-rootfs"

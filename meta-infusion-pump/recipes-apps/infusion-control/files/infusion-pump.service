@@ -1,21 +1,24 @@
 [Unit]
-Description=Servico de Controle da Bomba de Infusao
-# Só inicia APÓS a rede e o Mosquitto estarem prontos
+Description=Servico de Controle da Bomba de Infusao (C++ Nativo)
+# Mantemos o After/Requires: O firmware C++ falharia se o Mosquitto não estivesse pronto
 After=network.target mosquitto.service
 Requires=mosquitto.service
 
 [Service]
 Type=simple
-Environment=PYTHONUNBUFFERED=1
-# O comando exato para rodar seu script
-ExecStart=/usr/bin/python3 /usr/bin/infusion-pump-app
-# Reinicia automaticamente se o Python travar (CRUCIAL para 'Servidor')
+# REMOVEMOS: Environment=PYTHONUNBUFFERED=1 (não faz sentido para C++)
+
+# ALTERAMOS: Executamos o binário diretamente
+ExecStart=/usr/bin/infusion-pump-app
+
+# MANTEMOS: Robustez industrial
+# Se o C++ der um "segmentation fault" ou crashar, o systemd levanta ele em 5s
 Restart=always
 RestartSec=5
-# Roda como root para ter acesso ao GPIO
+
+# MANTEMOS: Acesso ao hardware
 User=root
 Group=root
 
 [Install]
-# Define que deve iniciar no boot multi-usuário (padrão)
 WantedBy=multi-user.target
