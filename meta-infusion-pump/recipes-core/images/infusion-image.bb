@@ -29,5 +29,8 @@ IMAGE_INSTALL:append = " \
     rpi-gpio \
     mosquitto \
     mosquitto-clients \
+    libgpiod \
+    libgpiod-tools \
+    libgpiod-dev \
     infusion-control \
 "

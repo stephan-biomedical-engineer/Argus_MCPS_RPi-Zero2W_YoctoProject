@@ -1,12 +1,14 @@
-# Diz ao bitbake para procurar arquivos nesta pasta 'files' primeiro
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
-# Adiciona o nosso arquivo de configuração à lista de fontes
-SRC_URI:append = " file://wpa_supplicant.conf-sane"
+SRC_URI += "file://wpa_supplicant.conf-sane"
 
-# Garante que o arquivo seja instalado no lugar certo com as permissões certas
-do_install:append () {
-    install -d ${D}${sysconfdir}/wpa_supplicant/
-    install -m 600 ${WORKDIR}/wpa_supplicant.conf-sane ${D}${sysconfdir}/wpa_supplicant.conf
+inherit systemd
+
+do_install:append() {
+    install -d ${D}${sysconfdir}/wpa_supplicant    
+    install -m 600 ${WORKDIR}/wpa_supplicant.conf-sane ${D}${sysconfdir}/wpa_supplicant/wpa_supplicant-wlan0.conf
 }
 
+# Habilita o serviço específico da interface wlan0
+SYSTEMD_SERVICE:${PN} = "wpa_supplicant@wlan0.service"
+SYSTEMD_AUTO_ENABLE = "enable"

@@ -13,3 +13,4 @@ __pycache__/
 
 # (Opcional) Se quiser ignorar as pastas de terceiros caso não use submodules
 # Mas vamos usar submodules, então não precisa ignorar aqui, o git gerencia.
+build-systemd/
