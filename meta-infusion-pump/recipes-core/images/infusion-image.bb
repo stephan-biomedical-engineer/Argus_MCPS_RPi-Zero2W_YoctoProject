@@ -32,5 +32,9 @@ IMAGE_INSTALL:append = " \
     libgpiod \
     libgpiod-tools \
     libgpiod-dev \
-    infusion-control \
+    paho-mqtt-c \
+    paho-mqtt-cpp \
+    paho-mqtt-c-dev \
+    paho-mqtt-cpp-dev \
+    infusion-control \                  
 "
