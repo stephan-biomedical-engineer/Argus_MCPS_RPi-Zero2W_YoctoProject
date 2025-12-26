@@ -5,6 +5,9 @@ build/sstate-cache/
 build/cache/
 build/bitbake-cookerdaemon.log
 
+# Ignorar firmwares de teste
+test_firmware/
+
 # Ignorar arquivos temporários do Python e Editor
 __pycache__/
 *.pyc
@@ -14,3 +17,4 @@ __pycache__/
 # (Opcional) Se quiser ignorar as pastas de terceiros caso não use submodules
 # Mas vamos usar submodules, então não precisa ignorar aqui, o git gerencia.
 build-systemd/
+build-optimized/
