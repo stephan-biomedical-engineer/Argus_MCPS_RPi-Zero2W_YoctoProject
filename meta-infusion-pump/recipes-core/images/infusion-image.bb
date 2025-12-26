@@ -24,26 +24,16 @@ IMAGE_INSTALL:append = " \
 "
 
 IMAGE_INSTALL:append = " \
-    python3 \
-    python3-pip \
-    python3-modules \
-    python3-smbus \
-    python3-flask \
-    python3-paho-mqtt \
-    rpi-gpio \
     devmem2 \
     mosquitto \
     mosquitto-clients \
     libgpiod \
     libgpiod-tools \
-    libgpiod-dev \
     paho-mqtt-c \
     paho-mqtt-cpp \
-    paho-mqtt-c-dev \
-    paho-mqtt-cpp-dev \
+    boost-system \
+    boost-thread \
     infusion-control-cpp \                  
 "
-
-MACHINE_EXTRA_RRECOMMENDS += "kernel-module-pwm-bcm2835"
 
 IMAGE_FEATURES += "read-only-rootfs"
