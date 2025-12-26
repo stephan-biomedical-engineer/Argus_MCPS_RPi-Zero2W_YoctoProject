@@ -4,6 +4,8 @@ LICENSE = "MIT"
 # Baseia na core-image-minimal (mas turbinada)
 require recipes-core/images/core-image-minimal.bb
 
+# kernel-module-x-bcm2835 instead kernel-modules (full)
+
 # --- PACOTES DO SISTEMA ---
 IMAGE_INSTALL:append = " \
     linux-firmware-rpidistro-bcm43436 \
@@ -15,11 +17,12 @@ IMAGE_INSTALL:append = " \
     htop \
     nano \
     i2c-tools \
-    kernel-modules \
+    kernel-module-pwm-bcm2835 \
+    kernel-module-spi-bcm2835 \
+    kernel-module-spidev \
+    kernel-module-i2c-dev \
 "
 
-# --- PACOTES PYTHON E APLICAÇÃO ---
-# python3-modules traz a biblioteca padrão completa (json, threading, etc)
 IMAGE_INSTALL:append = " \
     python3 \
     python3-pip \
@@ -40,5 +43,7 @@ IMAGE_INSTALL:append = " \
     paho-mqtt-cpp-dev \
     infusion-control-cpp \                  
 "
+
+MACHINE_EXTRA_RRECOMMENDS += "kernel-module-pwm-bcm2835"
 
 IMAGE_FEATURES += "read-only-rootfs"
