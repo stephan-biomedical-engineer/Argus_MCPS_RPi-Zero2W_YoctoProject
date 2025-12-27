@@ -59,26 +59,27 @@ private:
     void setup_mqtt() {
         mqtt_client_.brokers(BROKER_ADDR, BROKER_PORT);
 
-        // Iniciamos o loop de recepção ANTES do async_run
-        setup_receive_loop();
-
-        // Inicia o cliente
+        // 1. Iniciamos o cliente primeiro. 
+        // Ele ficará tentando conectar em background.
         mqtt_client_.async_run(boost::asio::detached);
 
-        // Inscreve no tópico
+        // 2. Agora armamos o receptor. 
+        setup_receive_loop();
+
+        // 3. Subscrevemos.
         boost::mqtt5::subscribe_topic sub_topic{TOPIC_NAME, {boost::mqtt5::qos_e::at_least_once}};
         mqtt_client_.async_subscribe(
             sub_topic,
             boost::mqtt5::subscribe_props{},
             [](boost::mqtt5::error_code ec, std::vector<boost::mqtt5::reason_code> rc, boost::mqtt5::suback_props props) {
-                if (!ec) std::cout << "Inscrito e pronto para comandos." << std::endl;
+                if (!ec) {
+                    std::cout << "Boost.MQTT5: Inscrito em: " << TOPIC_NAME << std::endl;
+                }
             }
         );
     }
 
-    // Loop recursivo para continuar recebendo mensagens
     void setup_receive_loop() {
-        // Usamos o operador -> para garantir que estamos acessando o cliente corretamente
         mqtt_client_.async_receive([this](
             boost::mqtt5::error_code ec, 
             std::string topic, 
@@ -87,14 +88,16 @@ private:
         ) {
             if (!ec) {
                 process_message(payload);
-                setup_receive_loop(); // Realimenta o loop imediatamente
+                setup_receive_loop();
             } else {
-                // Se houver erro (ex: desconexão), tentamos religar o loop após 1 segundo
-                std::cerr << "Erro no receive: " << ec.message() << ". Tentando reconectar loop..." << std::endl;
-                auto timer = std::make_shared<boost::asio::steady_timer>(io_, boost::asio::chrono::seconds(1));
-                timer->async_wait([this, timer](const boost::system::error_code&) {
-                    setup_receive_loop();
-                });
+                // VERIFICAÇÃO CRÍTICA: Se for cancelamento (comum no início ou fim), não logamos como erro
+                if (ec != boost::asio::error::operation_aborted) {
+                    std::cerr << "MQTT Receive Error: " << ec.message() << std::endl;
+                }
+                
+                // Se o erro não for uma falha fatal do io_context, rearma o loop
+                // (O cliente MQTT5 gerencia a reconexão sozinho, só precisamos manter o receptor vivo)
+                setup_receive_loop(); 
             }
         });
     }
