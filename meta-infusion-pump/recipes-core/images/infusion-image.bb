@@ -33,6 +33,7 @@ IMAGE_INSTALL:append = " \
     paho-mqtt-cpp \
     boost-system \
     boost-thread \
+    boost-mqtt5-dev \
     infusion-control-cpp \                  
 "
 

@@ -3,11 +3,13 @@ LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda2f7b4f302"
 
 # Dependências de Compilação (Build-time)
-DEPENDS = "glibc libgpiod paho-mqtt-cpp systemd"
-LDFLAGS += "-lsystemd"
+# Mantemos o paho-mqtt-cpp no DEPENDS apenas para o sysroot tê-lo disponível
+DEPENDS = "glibc libgpiod paho-mqtt-cpp systemd boost boost-mqtt5"
 
 # Dependências de Execução (Runtime)
-RDEPENDS:${PN} = "libgpiod paho-mqtt-cpp systemd"
+# Mantemos paho-mqtt-cpp aqui para que as .so estejam na imagem caso você precise
+# rodar um binário antigo manualmente para testes.
+RDEPENDS:${PN} = "libgpiod paho-mqtt-cpp systemd boost-system boost-thread"
 
 SRC_URI = " \
     file://listener.cpp \
@@ -16,9 +18,10 @@ SRC_URI = " \
 
 S = "${WORKDIR}"
 
-# Comando de compilação dentro do Yocto (usando as variáveis do Bitbake)
+# Comando de compilação atualizado
 do_compile() {
-    ${CXX} ${CXXFLAGS} ${LDFLAGS} ${S}/listener.cpp -o infusion-pump-bin -lgpiod -lpaho-mqttpp3 -lpaho-mqtt3as -lsystemd
+    ${CXX} ${CXXFLAGS} ${LDFLAGS} ${S}/listener.cpp -o infusion-pump-bin \
+    -lgpiod -lsystemd -lboost_system -lboost_thread -lpthread
 }
 
 do_install() {
