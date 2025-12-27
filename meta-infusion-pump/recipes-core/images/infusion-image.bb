@@ -12,6 +12,9 @@ IMAGE_INSTALL:append = " \
     linux-firmware-rpidistro-bcm43430 \
     kernel-module-brcmfmac \
     wpa-supplicant \
+    ntp \
+    tzdata \
+    tzdata-americas \
     iw \
     wireless-regdb \
     htop \
@@ -36,5 +39,5 @@ IMAGE_INSTALL:append = " \
     boost-mqtt5-dev \
     infusion-control-cpp \                  
 "
-
+PACKAGECONFIG:append:pn-systemd = " timesyncd"
 IMAGE_FEATURES += "read-only-rootfs"
