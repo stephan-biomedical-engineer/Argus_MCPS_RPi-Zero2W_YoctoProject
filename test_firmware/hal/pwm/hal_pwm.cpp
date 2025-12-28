@@ -27,7 +27,10 @@ HalPWM::HalPWM(int chip, int channel) : _chip(chip), _channel(channel) {
             int exp_fd = open(export_path.c_str(), O_WRONLY);
             if (exp_fd >= 0) {
                 std::string s_chan = std::to_string(_channel);
-                write(exp_fd, s_chan.c_str(), s_chan.size());
+                if(write(exp_fd, s_chan.c_str(), s_chan.size()) < 0){
+                    std::cerr << "HAL PWM: falha ao exportar canal PWM\n";
+                }
+
                 close(exp_fd);
                 usleep(150000); // Aguarda o Kernel criar os arquivos
                 _fd = open(_duty_path.c_str(), O_WRONLY);
@@ -41,7 +44,9 @@ void HalPWM::configure_sysfs_initial() {
     auto set_sys = [](const std::string& path, const std::string& val) {
         int fd = open(path.c_str(), O_WRONLY);
         if (fd >= 0) {
-            write(fd, val.c_str(), val.size());
+            if(write(fd, val.c_str(), val.size()) < 0){
+                std::cerr << "HAL PWM: falha ao configurar " << path << "\n";
+            }
             close(fd);
         }
     };
@@ -57,7 +62,9 @@ void HalPWM::apply_state(uint64_t period_ns, uint64_t duty_ns, bool enabled) {
             int fd = open(path.c_str(), O_WRONLY);
             if (fd >= 0) {
                 std::string s = std::to_string(val);
-                write(fd, s.c_str(), s.size());
+                if(write(fd, s.c_str(), s.size()) < 0){
+                    std::cerr << "HAL PWM: falha ao escrever em " << path << "\n";
+                }
                 close(fd);
             }
         };
@@ -75,7 +82,9 @@ void HalPWM::set_frequency(int hz) {
         int fd = open((_base_path + "/period").c_str(), O_WRONLY);
         if (fd >= 0) {
             std::string s_per = std::to_string(_current_period);
-            write(fd, s_per.c_str(), s_per.size());
+            if(write(fd, s_per.c_str(), s_per.size()) < 0){
+                std::cerr << "HAL PWM: falha ao escrever em " << (_base_path + "/period") << "\n";
+            }
             close(fd);
         }
     }
