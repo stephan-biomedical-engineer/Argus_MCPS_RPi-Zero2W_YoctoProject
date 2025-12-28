@@ -12,18 +12,21 @@ CXX ?= g++
 AR  ?= ar
 
 CXXFLAGS := -Wall -O2 -std=c++17
-CXXFLAGS += -Iinclude -Ipwm -Igpio -Ii2c
+CXXFLAGS += -Iinclude -Ipwm -Igpio -Ii2c -Iadc
 
 # ===============================
 # Fontes
 # ===============================
 HAL_SRCS := \
 	gpio/hal_gpio.cpp \
-	pwm/hal_pwm.cpp
+	pwm/hal_pwm.cpp \
+	i2c/hal_i2c.cpp \
+	adc/hal_adc.cpp
 
 APP_SRCS := \
 	app/motor_pwm.cpp \
-	app/encoder_position.cpp
+	app/encoder_position.cpp \
+	app/adc.cpp
 
 SRCS := $(HAL_SRCS) $(APP_SRCS)
 
