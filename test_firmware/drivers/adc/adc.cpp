@@ -22,6 +22,6 @@ Adc::Adc()
     _hal.configure(cfg);
 }
 
-float Adc::read(Channel ch) {
+uint16_t Adc::read(Channel ch) {
     return _hal.read(static_cast<HalAdc::AdcChannel>(ch));
 }

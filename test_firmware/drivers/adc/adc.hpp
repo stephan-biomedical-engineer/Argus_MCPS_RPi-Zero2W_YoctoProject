@@ -13,7 +13,7 @@ public:
     };
 
     Adc();               // construtor simples
-    float read(Channel); // leitura direta em volts
+    uint16_t read(Channel); // leitura direta em volts
 
 private:
     HalI2C  _i2c;

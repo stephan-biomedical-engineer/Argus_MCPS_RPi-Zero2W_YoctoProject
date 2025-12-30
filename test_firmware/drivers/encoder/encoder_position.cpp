@@ -25,9 +25,9 @@ void EncoderPosition::stop() {
 
 void EncoderPosition::monitor_loop() {
     while (_running) {
-        int ret = _clk.wait_for_edge(100000000); // 100ms
+        auto edge = _clk.wait_for_edge(100000000); // 100ms
 
-        if (ret <= 0)
+        if (edge == HalGpio::Edge::None)
             continue;
 
         if (_dt.get() == false)

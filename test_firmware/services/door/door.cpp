@@ -11,11 +11,11 @@ class DoorControllerThread {
     public:
         DoorControllerThread() : _running(true), _thread(&DoorControllerThread::run, this) {}
 
-    ~DoorControllerThread() {
-        _running = false;
-        if (_thread.joinable())
-            _thread.join();
-    }
+        ~DoorControllerThread() {
+            _running = false;
+            if (_thread.joinable())
+                _thread.join();
+        }
 
     private:
         std::atomic<bool> _running;
@@ -23,8 +23,8 @@ class DoorControllerThread {
 
         void run() {
             while (_running) {
-                int ret = door_gpio.wait_for_edge(-1);
-                if (ret <= 0)
+                auto edge = door_gpio.wait_for_edge(-1);
+                if (edge == HalGpio::Edge::None)
                     continue;
 
                 DoorState new_state = door_gpio.get() ? DoorState::OPEN : DoorState::CLOSED;

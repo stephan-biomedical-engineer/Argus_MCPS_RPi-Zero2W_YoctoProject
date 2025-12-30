@@ -77,7 +77,8 @@ float HalAdc::read(AdcChannel ch) {
 
 bool HalAdc::wait_conversion_ready(int timeout_ms) {
     if (_alert) {
-        return _alert->wait_for_edge(timeout_ms) > 0;
+        auto edge = _alert->wait_for_edge(timeout_ms);
+        return edge != HalGpio::Edge::None;
     }
 
     uint8_t buf[2];
