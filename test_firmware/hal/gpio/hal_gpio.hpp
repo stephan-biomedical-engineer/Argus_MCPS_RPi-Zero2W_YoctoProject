@@ -24,12 +24,13 @@ public:
     void set(bool high);
     bool get() const;
 
-    int wait_for_edge(int timeout_ns);
+    Edge wait_for_edge(int timeout_ns);
 
 private:
     unsigned int _pin;
     gpiod_chip* _chip = nullptr;
     gpiod_line_request* _req = nullptr;
+    struct gpiod_edge_event_buffer* _buffer = nullptr;
 };
 
 #endif

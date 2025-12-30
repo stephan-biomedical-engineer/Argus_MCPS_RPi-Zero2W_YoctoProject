@@ -21,12 +21,14 @@ HAL_SRCS := \
 	gpio/hal_gpio.cpp \
 	pwm/hal_pwm.cpp \
 	i2c/hal_i2c.cpp \
-	adc/hal_adc.cpp
+	adc/hal_adc.cpp 
 
 APP_SRCS := \
 	app/motor_pwm.cpp \
 	app/encoder_position.cpp \
-	app/adc.cpp
+	app/adc.cpp \
+	app/ir_led_pwm.cpp \
+	app/door.cpp
 
 SRCS := $(HAL_SRCS) $(APP_SRCS)
 

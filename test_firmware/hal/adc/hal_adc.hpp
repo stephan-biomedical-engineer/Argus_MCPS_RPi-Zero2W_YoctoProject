@@ -90,6 +90,7 @@ class HalAdc {
 
     private:
         bool wait_conversion_ready(int timeout_ms);
+        bool setup_ready_pin(void);
         float pga_to_lsb() const;
         uint16_t channel_to_mux(AdcChannel ch) const;
 

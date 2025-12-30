@@ -1,5 +1,6 @@
 #include "hal_adc.hpp"
 #include <unistd.h>
+#include <iostream>
 
 /* ================= Helpers ================= */
 
@@ -23,7 +24,9 @@ bool HalAdc::configure(uint16_t config) {
     uint8_t msb, lsb;
     split_word(config, msb, lsb);
     uint8_t buf[2] = { msb, lsb };
-
+    if(!setup_ready_pin()){
+       std::cerr << "ALERT not configured correctly" << std::endl;
+    }
     return _i2c.write_bytes(ADS1115_REG_CONFIG, buf, 2);
 }
 
@@ -62,7 +65,7 @@ float HalAdc::read_voltage() {
 float HalAdc::read(AdcChannel ch) {
     _config &= ~(0x7 << 12);             // clear MUX
     _config |= channel_to_mux(ch);       // set channel
-
+    usleep(5000);
     if (!configure(_config))
         return 0.0f;
 
@@ -114,4 +117,14 @@ uint16_t HalAdc::channel_to_mux(AdcChannel ch) const {
         case AdcChannel::AIN3: return ADS1115_MUX_SINGLE_3;
         default:               return ADS1115_MUX_SINGLE_0;
     }
+}
+
+bool HalAdc::setup_ready_pin() {
+    // Para o pino ALERT funcionar como READY: 
+    // Lo_thresh MSB = 0, Hi_thresh MSB = 1
+    uint8_t lo[2] = { 0x00, 0x00 };
+    uint8_t hi[2] = { 0x80, 0x00 }; 
+    
+    if (!_i2c.write_bytes(ADS1115_REG_LO_THRESH, lo, 2)) return false;
+    return _i2c.write_bytes(ADS1115_REG_HI_THRESH, hi, 2);
 }

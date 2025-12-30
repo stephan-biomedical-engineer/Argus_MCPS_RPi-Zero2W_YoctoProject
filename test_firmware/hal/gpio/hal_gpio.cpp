@@ -23,6 +23,7 @@ HalGpio::HalGpio(unsigned int pin, Direction dir, Edge edge, bool active_low, co
             edge == Edge::Rising ? GPIOD_LINE_EDGE_RISING :
             edge == Edge::Falling ? GPIOD_LINE_EDGE_FALLING :
             GPIOD_LINE_EDGE_BOTH);
+        _buffer = gpiod_edge_event_buffer_new(1);
     }
 
     gpiod_line_config_add_line_settings(line_cfg, &_pin, 1, settings);
@@ -49,11 +50,33 @@ bool HalGpio::get() const {
     return val == GPIOD_LINE_VALUE_ACTIVE;
 }
 
-int HalGpio::wait_for_edge(int timeout_ns) {
-    if (!_req)
-        return -1;
-    return gpiod_line_request_wait_edge_events(_req, timeout_ns);
+HalGpio::Edge HalGpio::wait_for_edge(int timeout_ns)
+{
+    if (!_req || !_buffer)
+        return Edge::None;
+
+    int ret = gpiod_line_request_wait_edge_events(_req, timeout_ns);
+    if (ret <= 0)
+        return Edge::None;
+
+    ret = gpiod_line_request_read_edge_events(_req, _buffer, 1);
+    if (ret <= 0)
+        return Edge::None;
+
+    const gpiod_edge_event* event = gpiod_edge_event_buffer_get_event(_buffer, 0);
+    auto* ev = const_cast<struct gpiod_edge_event*>(event);
+
+    switch (gpiod_edge_event_get_event_type(ev)) {
+        case GPIOD_EDGE_EVENT_RISING_EDGE:
+            return Edge::Rising;
+        case GPIOD_EDGE_EVENT_FALLING_EDGE:
+            return Edge::Falling;
+        default:
+            return Edge::None;
+    }
 }
+
+
 
 HalGpio::~HalGpio() {
     if (_req) {
@@ -61,5 +84,8 @@ HalGpio::~HalGpio() {
     }
     if (_chip) {
         gpiod_chip_close(_chip);
+    }
+    if (_buffer) {
+        gpiod_edge_event_buffer_free(_buffer);
     }
 }

@@ -15,9 +15,9 @@ Adc::Adc()
 {
     uint16_t cfg =
         ADS1115_PGA_4_096V |
-        ADS1115_MODE_SINGLE_SHOT |
-        ADS1115_DR_128SPS |
-        ADS1115_COMP_QUE_DISABLE;
+        ADS1115_MODE_CONTINUOUS |
+        ADS1115_DR_860SPS |
+        ADS1115_COMP_QUE_1CONV;
 
     _hal.configure(cfg);
 }
