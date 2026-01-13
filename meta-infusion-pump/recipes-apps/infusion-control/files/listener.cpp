@@ -10,7 +10,7 @@
 const std::string BROKER_ADDR = "127.0.0.1";
 const uint16_t BROKER_PORT = 1883;
 const std::string TOPIC_NAME = "bomba/infusao";
-const unsigned int MOTOR_PIN = 17;
+const unsigned int MOTOR_PIN = 12;
 
 class InfusionPump {
 public:
