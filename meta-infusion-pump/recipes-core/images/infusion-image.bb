@@ -38,7 +38,7 @@ IMAGE_INSTALL:append = " \
     boost-thread \
     boost-json \
     boost-mqtt5-dev \
-    infusion-control-cpp \                  
+    argus-control-cpp \                  
 "
 PACKAGECONFIG:append:pn-systemd = " timesyncd"
 IMAGE_FEATURES += "read-only-rootfs"
