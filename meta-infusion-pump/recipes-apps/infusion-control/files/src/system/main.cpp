@@ -56,8 +56,10 @@ int main()
 
     try
     {
+        const char* node = "/dev/spidev0.0";
+        const uint32_t spi_speed_hz = 4000000; 
         // 1. Hardware Initialization
-        HalSpi spi("/dev/spidev0.0", 100000);
+        HalSpi spi(node, spi_speed_hz);
         HalGpio ready_pin(25, HalGpio::Direction::Input, HalGpio::Edge::Rising, false, "/dev/gpiochip0");
         HalGpio stm32_reset_pin(4, HalGpio::Direction::Output, HalGpio::Edge::None, false, "/dev/gpiochip0");
         stm32_reset_pin.set(true);

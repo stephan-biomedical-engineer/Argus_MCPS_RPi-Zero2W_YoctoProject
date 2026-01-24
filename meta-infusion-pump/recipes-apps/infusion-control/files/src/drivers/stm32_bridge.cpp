@@ -3,6 +3,7 @@
 #include <iostream>
 #include <thread>
 #include <chrono>
+#include <cstdio> // Para printf
 
 extern "C"
 {
@@ -18,8 +19,6 @@ bool Stm32Bridge::_safe_transfer(size_t len)
     int retries = 500; // Timeout de segurança (~5s)
 
     // 1. Bloqueia aqui até o STM32 dizer que está PRONTO
-    // Se o STM32 estiver processando o comando, o pino fica LOW e nós ficamos parados aqui.
-    // Isso elimina a necessidade do "while(tentativas--)" lá fora.
     while(!_ready_pin.get())
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -39,63 +38,94 @@ bool Stm32Bridge::_safe_transfer(size_t len)
 
 bool Stm32Bridge::send_command(cmd_ids_t req_id, cmd_cmds_t* req_data, cmd_cmds_t* res_data)
 {
-    size_t size = 0;
-    uint8_t master = ADDR_MASTER;
-    uint8_t slave = ADDR_SLAVE;
-
+    // Limpa buffers
     std::memset(_tx_buf, 0, sizeof(_tx_buf));
     std::memset(_rx_buf, 0, sizeof(_rx_buf));
 
+    size_t encoded_size = 0;
+    uint8_t master = ADDR_MASTER;
+    uint8_t slave = ADDR_SLAVE;
+
     // 1. Encode do Comando
-    if(!cmd_encode(_tx_buf, &size, &master, &slave, &req_id, req_data))
+    // IMPORTANTE: O cmd_encode (versão nova) já insere o SOF (AA 55) automaticamente.
+    if(!cmd_encode(_tx_buf, &encoded_size, &master, &slave, &req_id, req_data))
     {
         std::cerr << "[BRIDGE] Erro de Encode" << std::endl;
         return false;
     }
 
-    size_t xfer_len = (size < 64) ? 64 : size;
+    // Garante tamanho mínimo de transferência (64 bytes para manter o clock)
+    size_t xfer_len = (encoded_size < 64) ? 64 : encoded_size;
 
     // 2. Envia o Comando
-    // O _safe_transfer garante que só enviamos se o STM32 estiver ouvindo
     if(!_safe_transfer(xfer_len))
     {
         return false;
     }
 
     // 3. Lê a Resposta (Imediatamente)
-    // Pequeno delay para o STM32 trocar o contexto de RX para TX e calcular a resposta
-    // O _safe_transfer abaixo vai BLOQUEAR no GPIO até a resposta estar pronta.
-
     // Prepara Dummys
     std::memset(_tx_buf, 0, 64);
 
-    // Assim que o _safe_transfer retornar, significa que o GPIO subiu e lemos os dados válidos.
+    // Lê 64 bytes de resposta (pode conter lixo + resposta)
     if(!_safe_transfer(64))
     {
         return false;
     }
 
-    // 4. Decode
-    uint8_t rx_id = _rx_buf[2];
+    printf("[SPI RAW RX]: ");
+    for(int rx_byte = 0; rx_byte < 16; rx_byte++) 
+    { 
+        printf("%02X ", _rx_buf[rx_byte]); 
+    }
+    printf("\n");
 
-    // Validação básica se não veio lixo (0x00 ou 0xFF)
-    if(rx_id == 0x00 || rx_id == 0xFF)
+    // 4. SCANNER DE SOF (A Mágica da Sincronia) 
+    // Em vez de assumir que a resposta está no byte 0 ou 2, procuramos a assinatura.
+    
+    int sof_index = -1;
+    // Varre o buffer procurando AA 55
+    for(int scan_sof_idx = 0; scan_sof_idx < (64 - CMD_HDR_SIZE); scan_sof_idx++) 
     {
-        // Se confiamos no pino Ready, isso aqui seria um erro grave de firmware do lado de lá
-        // std::cerr << "[BRIDGE] Erro: STM32 indicou pronto mas enviou lixo." << std::endl;
+        if(_rx_buf[scan_sof_idx] == CMD_SOF_1_BYTE && _rx_buf[scan_sof_idx+1] == CMD_SOF_2_BYTE) 
+        {
+            sof_index = scan_sof_idx;
+            break;
+        }
+    }
+
+    if (sof_index < 0) 
+    {
+        // Se não achou SOF, é erro de comunicação ou o STM32 não respondeu.
+        std::cerr << "[BRIDGE] Erro: SOF nao encontrado. Dump RX (16 bytes): ";
+        for(int rx_byte=0; rx_byte<16; rx_byte++) 
+        {
+            printf("%02X ", _rx_buf[rx_byte]);
+        }
+        printf("\n");
         return false;
     }
 
+    // Aponta para o início real do pacote encontrado
+    uint8_t* p_packet = &_rx_buf[sof_index];
+    
+    // Calcula tamanho total esperado
+    // Header V2 tem 7 bytes. O Payload Size está nos bytes 5 e 6 (indices relativos ao SOF).
+    // p_packet[0]=AA, [1]=55, [2]=DST, [3]=SRC, [4]=ID, [5]=SizeL, [6]=SizeH
+    
+    uint16_t payload_len = utl_io_get16_fl(&p_packet[5]); 
+    size_t total_valid_len = CMD_HDR_SIZE + payload_len + CMD_TRAILER_SIZE;
+
+    // Decodifica a partir do SOF encontrado
+    // O cmd_decode novo já sabe pular o SOF interno.
     uint8_t src, dst;
     cmd_ids_t res_id_decoded;
-    uint16_t payload_len = (_rx_buf[4] << 8) | _rx_buf[3];
-    size_t total_len = 5 + payload_len + 2;
 
-    if(cmd_decode(_rx_buf, total_len, &src, &dst, &res_id_decoded, res_data))
+    if(cmd_decode(p_packet, total_valid_len, &src, &dst, &res_id_decoded, res_data))
     {
         return true;
     }
 
-    std::cerr << "[BRIDGE] Erro de Checksum na resposta" << std::endl;
+    std::cerr << "[BRIDGE] Erro de Checksum na resposta (SOF achado em " << sof_index << ")" << std::endl;
     return false;
 }
