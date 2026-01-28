@@ -2,15 +2,30 @@
 #define INFUSION_MANAGER_HPP
 
 #include "stm32_bridge.hpp"
+#include "cmd.h"
 #include <mutex>
 #include <thread>
 #include <atomic>
 #include <functional>
-#include <memory>
-#include <string> // <--- 1. Necessário para std::string
+#include <string>
 
-// --- 2. MUDANÇA CRÍTICA: O Callback agora transporta JSON (String), não struct bruta ---
+// ============================================================
+// Tipos
+// ============================================================
+
+// O HUB repassa exatamente o que o firmware respondeu
+// O HUB apenas repassa o código bruto do firmware
+using CommandStatus = uint8_t;
+
+// Convenção local apenas para erro de transporte
+static constexpr CommandStatus CMD_TRANSPORT_ERROR = 0xFF;
+
+// Callback de status (JSON serializado)
 using StatusCallback = std::function<void(std::string)>;
+
+// ============================================================
+// Classe
+// ============================================================
 
 class InfusionManager
 {
@@ -18,53 +33,55 @@ public:
     InfusionManager(Stm32Bridge& bridge, HalGpio& reset_pin);
     ~InfusionManager();
 
-    // Inicia a thread de monitoramento
+    // Thread de monitoramento
     void start();
-
-    // Para a thread
     void stop();
 
-    // Registra quem quer ouvir as atualizações de status
+    // Status periódico do STM32
     void set_status_callback(StatusCallback cb);
 
-    // --- Comandos de Controle (Chamados pelo MQTT) ---
-    // Retornam true se o STM32 confirmou (ACK)
+    // --------------------------------------------------------
+    // Comandos (retornam exatamente o status do firmware)
+    // --------------------------------------------------------
 
-    bool start_infusion();
-    bool pause_infusion();
-    bool stop_infusion(); // Abort
+    CommandStatus start_infusion();
+    CommandStatus pause_infusion();
+    CommandStatus stop_infusion(); // abort
 
-    // Configuração completa
-    bool set_config(uint32_t volume_ml, uint32_t rate_ml_h, uint8_t mode);
+    CommandStatus set_config(uint32_t volume_ml,
+                             uint32_t rate_ml_h);
 
-    // Métodos de Ação Direta
-    bool start_bolus(uint32_t volume_ml, uint32_t rate_ml_h);
-    bool start_purge();
+    CommandStatus start_bolus(uint32_t volume_ml,
+                          uint32_t rate_ml_h);
 
-    // --- 3. NOVO: Método para iniciar atualização de Firmware ---
+    CommandStatus start_purge(uint32_t rate_ml_h);
+
+
+    // --------------------------------------------------------
+    // Manutenção
+    // --------------------------------------------------------
+
     void start_ota_process(const std::string& filepath);
-
     void hard_reset_stm32();
 
 private:
+    // Hardware
     Stm32Bridge& _bridge;
-
     HalGpio& _reset_pin;
 
-    // Mutex para proteger o acesso concorrente ao SPI
+    // Proteção SPI
     std::mutex _spi_mutex;
 
-    // Controle da Thread de Monitoramento
-    std::atomic<bool> _running;
-
+    // Controle thread
+    std::atomic<bool> _running{false};
     std::atomic<bool> _maintenance_mode{false};
 
     std::thread _monitor_thread;
 
-    // Callback para notificar o andar de cima
+    // Callback status
     StatusCallback _status_cb;
 
-    // Loop principal da thread
+    // Loop principal
     void monitor_loop();
 };
 

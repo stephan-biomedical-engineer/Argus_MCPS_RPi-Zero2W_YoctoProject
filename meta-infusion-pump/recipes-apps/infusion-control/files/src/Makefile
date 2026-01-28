@@ -28,8 +28,8 @@ INC_FLAGS := \
 	-Isystem \
 	-Iuser_application
 
-CXXFLAGS += -Wall -O2 -std=c++17 $(INC_FLAGS)
-CFLAGS   += -Wall -O2 -std=c99 $(INC_FLAGS)
+CXXFLAGS += -Wall -O2 -std=c++17 -s $(INC_FLAGS)
+CFLAGS   += -Wall -O2 -std=c99 -s $(INC_FLAGS)
 
 # ===============================
 # MAIN DAEMON 

@@ -73,12 +73,12 @@ bool Stm32Bridge::send_command(cmd_ids_t req_id, cmd_cmds_t* req_data, cmd_cmds_
         return false;
     }
 
-    printf("[SPI RAW RX]: ");
-    for(int rx_byte = 0; rx_byte < 16; rx_byte++) 
-    { 
-        printf("%02X ", _rx_buf[rx_byte]); 
-    }
-    printf("\n");
+    // printf("[SPI RAW RX]: ");
+    // for(int rx_byte = 0; rx_byte < 16; rx_byte++) 
+    // { 
+    //     printf("%02X ", _rx_buf[rx_byte]); 
+    // }
+    // printf("\n");
 
     // 4. SCANNER DE SOF (A Mágica da Sincronia) 
     // Em vez de assumir que a resposta está no byte 0 ou 2, procuramos a assinatura.

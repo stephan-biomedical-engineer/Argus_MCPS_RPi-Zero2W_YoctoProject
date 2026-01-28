@@ -21,10 +21,14 @@ extern "C"
 
 static const char* DEVICE = "/dev/spidev0.0";
 static const int GPIO_READY_PIN = 25;
-static const uint8_t SPI_MODE = SPI_MODE_0;
-static const uint8_t BITS = 8;
-static const uint32_t SPEED = 100000;
+static const uint32_t SPEED = 100000; 
 static const int CHUNK_DATA_SIZE = 48;
+
+// --- PROTOCOLO V2 ---
+#define CMD_SOF_1 0xAA
+#define CMD_SOF_2 0x55
+// SEU CMD.C USA 0xFFFF (PADRÃO CCITT)
+#define CRC_SEED  0xFFFF 
 
 int fd_spi;
 HalGpio* slave_ready_ptr;
@@ -37,7 +41,7 @@ int spi_transaction()
     memset(&tr, 0, sizeof(tr));
     tr.tx_buf = (unsigned long) tx_buf;
     tr.rx_buf = (unsigned long) rx_buf;
-    tr.len = 64;
+    tr.len = 64; 
     tr.speed_hz = SPEED;
     tr.bits_per_word = 8;
 
@@ -45,15 +49,13 @@ int spi_transaction()
     while(!slave_ready_ptr->get())
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        retries--;
-        if(retries <= 0)
+        if(--retries <= 0)
         {
             printf("\n[FATAL] Timeout Hardware: STM32 não levantou pino Ready!\n");
             return -1;
         }
     }
 
-    // Delay crítico para DMA do STM32
     std::this_thread::sleep_for(std::chrono::milliseconds(2));
 
     if(ioctl(fd_spi, SPI_IOC_MESSAGE(1), &tr) < 1)
@@ -63,23 +65,34 @@ int spi_transaction()
 
 bool esperar_ack(uint8_t cmd_esperado)
 {
-    int tentativas = 50;
+    int tentativas = 50; 
 
     while(tentativas--)
     {
         memset(tx_buf, 0, 64);
+        if(spi_transaction() < 0) return false;
 
-        if(spi_transaction() < 0)
-            return false;
-
-        uint8_t id_recebido = rx_buf[2];
-
-        if(id_recebido != 0x00 && id_recebido != 0xFF)
+        // Scanner V2
+        int sof_index = -1;
+        for(int i = 0; i < (64 - 7); i++) 
         {
+            if(rx_buf[i] == CMD_SOF_1 && rx_buf[i+1] == CMD_SOF_2)
+            {
+                sof_index = i;
+                break;
+            }
+        }
+
+        if(sof_index >= 0)
+        {
+            uint8_t* p_pkt = &rx_buf[sof_index];
+            uint8_t id_recebido = p_pkt[4]; // [0]AA [1]55 [2]DST [3]SRC [4]ID
+
             if(id_recebido == CMD_OTA_RES_ID)
-            { // 0x5F
-                uint8_t req_originaria = rx_buf[5];
-                uint8_t status = rx_buf[6];
+            {
+                // [5]LenL [6]LenH [7]ReqID [8]Status
+                uint8_t req_originaria = p_pkt[7];
+                uint8_t status = p_pkt[8];
 
                 if(req_originaria == cmd_esperado && status == 0)
                 {
@@ -87,71 +100,72 @@ bool esperar_ack(uint8_t cmd_esperado)
                 }
                 else
                 {
-                    printf("-> Erro Lógico (Req: %02X Status: %d)\n", req_originaria, status);
+                    printf("-> NACK (Req: %02X Status: %d)\n", req_originaria, status);
+                    return false; 
                 }
             }
         }
-
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
-    printf("\n   [TIMEOUT] Falha no ACK.\n");
+    printf("\n   [TIMEOUT] ACK nao recebido.\n");
     return false;
+}
+
+// --- CORREÇÃO CRÍTICA AQUI ---
+void finalizar_pacote_v2(int payload_end_idx)
+{
+    // O cmd.c do STM32 calcula o CRC sobre TODO o buffer recebido (incluindo AA 55)
+    // até os 2 últimos bytes.
+    //
+    // tx_buf[0] = AA
+    // ...
+    // tx_buf[payload_end_idx] será CRC_L
+    
+    // Calculamos CRC do índice 0 até o fim do payload
+    uint16_t crc = utl_crc16_data(tx_buf, payload_end_idx, CRC_SEED);
+    
+    tx_buf[payload_end_idx] = crc & 0xFF;
+    tx_buf[payload_end_idx + 1] = crc >> 8;
 }
 
 bool enviar_chunk_seguro(uint32_t offset, std::vector<uint8_t>& dados)
 {
     memset(tx_buf, 0, 64);
 
-    cmd_ota_chunk_t chunk_pkt;
-    chunk_pkt.offset = offset;
-    chunk_pkt.len = dados.size();
-    memcpy(chunk_pkt.data, dados.data(), dados.size());
-
-    tx_buf[0] = ADDR_MASTER;
-    tx_buf[1] = ADDR_SLAVE;
-    tx_buf[2] = CMD_OTA_CHUNK_REQ_ID;
+    tx_buf[0] = CMD_SOF_1;    
+    tx_buf[1] = CMD_SOF_2;    
+    tx_buf[2] = ADDR_SLAVE;   
+    tx_buf[3] = ADDR_MASTER;  
+    tx_buf[4] = CMD_OTA_CHUNK_REQ_ID; 
 
     uint16_t payload_len = 4 + 1 + dados.size();
-    tx_buf[3] = payload_len & 0xFF;
-    tx_buf[4] = (payload_len >> 8) & 0xFF;
+    tx_buf[5] = payload_len & 0xFF;
+    tx_buf[6] = (payload_len >> 8) & 0xFF;
 
-    memcpy(&tx_buf[5], &chunk_pkt, payload_len);
+    int idx = 7;
+    memcpy(&tx_buf[idx], &offset, 4); 
+    idx += 4;
+    tx_buf[idx++] = (uint8_t)dados.size();
+    memcpy(&tx_buf[idx], dados.data(), dados.size());
+    idx += dados.size();
 
-    // --- CORREÇÃO: Usando utl_crc16_data com seed 0xFFFF ---
-    uint16_t crc = utl_crc16_data(tx_buf, 5 + payload_len, 0xFFFF);
-    tx_buf[5 + payload_len] = crc & 0xFF;
-    tx_buf[5 + payload_len + 1] = crc >> 8;
+    finalizar_pacote_v2(idx); // idx agora aponta para onde vai o CRC
 
-    if(spi_transaction() < 0)
-        return false;
-
-    if(!esperar_ack(CMD_OTA_CHUNK_REQ_ID))
-    {
-        return false;
-    }
+    if(spi_transaction() < 0) return false;
+    if(!esperar_ack(CMD_OTA_CHUNK_REQ_ID)) return false;
+    
     return true;
 }
 
 int main(int argc, char* argv[])
 {
-    // Validação básica de argumentos
-    if(argc < 2)
-    {
-        printf("Uso: stm32-updater <caminho_firmware.bin>\n");
-        return 1;
-    }
+    if(argc < 2) { printf("Uso: stm32-updater <bin>\n"); return 1; }
 
     fd_spi = open(DEVICE, O_RDWR);
-    if(fd_spi < 0)
-    {
-        perror("Erro ao abrir SPI");
-        return 1;
-    }
+    if(fd_spi < 0) { perror("SPI"); return 1; }
 
-    uint8_t mode = SPI_MODE;
-    uint8_t bits = BITS;
-    uint32_t speed = SPEED;
+    uint8_t mode = SPI_MODE_0; uint8_t bits = 8; uint32_t speed = SPEED;
     ioctl(fd_spi, SPI_IOC_WR_MODE, &mode);
     ioctl(fd_spi, SPI_IOC_WR_BITS_PER_WORD, &bits);
     ioctl(fd_spi, SPI_IOC_WR_MAX_SPEED_HZ, &speed);
@@ -160,38 +174,31 @@ int main(int argc, char* argv[])
     slave_ready_ptr = &slave_ready;
 
     std::ifstream file(argv[1], std::ios::binary | std::ios::ate);
-    if(!file.is_open())
-    {
-        printf("Erro ao abrir arquivo: %s\n", argv[1]);
-        close(fd_spi);
-        return 1;
-    }
-
+    if(!file.is_open()) { printf("Erro Arquivo\n"); return 1; }
     uint32_t file_size = file.tellg();
     file.seekg(0, std::ios::beg);
 
-    printf("--- STM32 Updater (CLI) ---\n");
+    printf("--- STM32 Updater V2.2 (Fix CRC Scope) ---\n");
     printf("Arquivo: %s (%d bytes)\n", argv[1], file_size);
 
     // 1. START
-    printf("[1/3] Iniciando OTA...\n");
+    printf("[1/3] Start OTA...\n");
     memset(tx_buf, 0, 64);
-    tx_buf[2] = CMD_OTA_START_REQ_ID;
-    tx_buf[3] = 4;
-    tx_buf[4] = 0;
-    memcpy(&tx_buf[5], &file_size, 4);
+    
+    tx_buf[0] = CMD_SOF_1; tx_buf[1] = CMD_SOF_2;
+    tx_buf[2] = ADDR_SLAVE; tx_buf[3] = ADDR_MASTER;
+    tx_buf[4] = CMD_OTA_START_REQ_ID;
+    tx_buf[5] = 4; tx_buf[6] = 0; 
+    memcpy(&tx_buf[7], &file_size, 4);
 
-    uint16_t crc = utl_crc16_data(tx_buf, 9, 0xFFFF);
-    tx_buf[9] = crc & 0xFF;
-    tx_buf[10] = crc >> 8;
+    finalizar_pacote_v2(11);
 
     spi_transaction();
-
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
     if(!esperar_ack(CMD_OTA_START_REQ_ID))
     {
-        printf("[FALHA] STM32 não aceitou o START.\n");
+        printf("[FALHA] Start rejeitado.\n");
         close(fd_spi);
         return 1;
     }
@@ -205,29 +212,15 @@ int main(int argc, char* argv[])
     {
         size_t bytes_read = file.gcount();
         buffer.resize(bytes_read);
-
-        bool chunk_gravado = false;
-        for(int retry = 0; retry < 3; retry++)
-        {
-            if(enviar_chunk_seguro(offset, buffer))
-            {
-                chunk_gravado = true;
-                break;
-            }
-            printf(".");
-            fflush(stdout);
+        bool ok = false;
+        for(int r=0; r<3; r++) {
+            if(enviar_chunk_seguro(offset, buffer)) { ok=true; break; }
+            printf("R"); fflush(stdout);
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
-
-        if(!chunk_gravado)
-        {
-            printf("\n[ERRO FATAL] Falha no offset %d.\n", offset);
-            close(fd_spi);
-            return 1;
-        }
-
+        if(!ok) { printf("\n[ERRO] Offset %d\n", offset); close(fd_spi); return 1; }
         offset += bytes_read;
-        printf("\rProgresso: %d / %d bytes (%d%%)", offset, file_size, (offset * 100) / file_size);
+        printf("\rProgresso: %d / %d (%d%%)", offset, file_size, (offset*100)/file_size);
         fflush(stdout);
         buffer.resize(CHUNK_DATA_SIZE);
     }
@@ -235,26 +228,26 @@ int main(int argc, char* argv[])
     // 3. END
     printf("\n[3/3] Finalizando...\n");
     memset(tx_buf, 0, 64);
-    tx_buf[0] = ADDR_MASTER;
-    tx_buf[1] = ADDR_SLAVE;
-    tx_buf[2] = CMD_OTA_END_REQ_ID;
-
-    uint16_t crc_end = utl_crc16_data(tx_buf, 5, 0xFFFF);
-    tx_buf[5] = crc_end & 0xFF;
-    tx_buf[6] = crc_end >> 8;
+    
+    tx_buf[0] = CMD_SOF_1; tx_buf[1] = CMD_SOF_2;
+    tx_buf[2] = ADDR_SLAVE; tx_buf[3] = ADDR_MASTER;
+    tx_buf[4] = CMD_OTA_END_REQ_ID;
+    tx_buf[5] = 0; tx_buf[6] = 0;
+    
+    finalizar_pacote_v2(7);
 
     spi_transaction();
 
     if(esperar_ack(CMD_OTA_END_REQ_ID))
     {
-        printf("\nSUCESSO! Firmware atualizado.\n");
+        printf("\nSUCESSO! ACK recebido. O STM32 vai reiniciar em instantes.\n");
         close(fd_spi);
-        return 0; // SUCESSO
+        return 0; // Sucesso Real
     }
     else
     {
-        printf("\n[AVISO] Sem ACK final, mas upload concluído.\n");
+        printf("\n[ERRO] O STM32 não respondeu ao comando final.\n");
         close(fd_spi);
-        return 1; // Erro no ACK final
+        return 1; // Falha Real
     }
 }
