@@ -21,14 +21,14 @@ extern "C"
 
 static const char* DEVICE = "/dev/spidev0.0";
 static const int GPIO_READY_PIN = 25;
-static const uint32_t SPEED = 100000; 
+static const uint32_t SPEED = 100000;
 static const int CHUNK_DATA_SIZE = 48;
 
 // --- PROTOCOLO V2 ---
 #define CMD_SOF_1 0xAA
 #define CMD_SOF_2 0x55
 // SEU CMD.C USA 0xFFFF (PADRÃO CCITT)
-#define CRC_SEED  0xFFFF 
+#define CRC_SEED 0xFFFF
 
 int fd_spi;
 HalGpio* slave_ready_ptr;
@@ -41,7 +41,7 @@ int spi_transaction()
     memset(&tr, 0, sizeof(tr));
     tr.tx_buf = (unsigned long) tx_buf;
     tr.rx_buf = (unsigned long) rx_buf;
-    tr.len = 64; 
+    tr.len = 64;
     tr.speed_hz = SPEED;
     tr.bits_per_word = 8;
 
@@ -65,18 +65,19 @@ int spi_transaction()
 
 bool esperar_ack(uint8_t cmd_esperado)
 {
-    int tentativas = 50; 
+    int tentativas = 50;
 
     while(tentativas--)
     {
         memset(tx_buf, 0, 64);
-        if(spi_transaction() < 0) return false;
+        if(spi_transaction() < 0)
+            return false;
 
         // Scanner V2
         int sof_index = -1;
-        for(int i = 0; i < (64 - 7); i++) 
+        for(int i = 0; i < (64 - 7); i++)
         {
-            if(rx_buf[i] == CMD_SOF_1 && rx_buf[i+1] == CMD_SOF_2)
+            if(rx_buf[i] == CMD_SOF_1 && rx_buf[i + 1] == CMD_SOF_2)
             {
                 sof_index = i;
                 break;
@@ -101,7 +102,7 @@ bool esperar_ack(uint8_t cmd_esperado)
                 else
                 {
                     printf("-> NACK (Req: %02X Status: %d)\n", req_originaria, status);
-                    return false; 
+                    return false;
                 }
             }
         }
@@ -121,10 +122,10 @@ void finalizar_pacote_v2(int payload_end_idx)
     // tx_buf[0] = AA
     // ...
     // tx_buf[payload_end_idx] será CRC_L
-    
+
     // Calculamos CRC do índice 0 até o fim do payload
     uint16_t crc = utl_crc16_data(tx_buf, payload_end_idx, CRC_SEED);
-    
+
     tx_buf[payload_end_idx] = crc & 0xFF;
     tx_buf[payload_end_idx + 1] = crc >> 8;
 }
@@ -133,39 +134,51 @@ bool enviar_chunk_seguro(uint32_t offset, std::vector<uint8_t>& dados)
 {
     memset(tx_buf, 0, 64);
 
-    tx_buf[0] = CMD_SOF_1;    
-    tx_buf[1] = CMD_SOF_2;    
-    tx_buf[2] = ADDR_SLAVE;   
-    tx_buf[3] = ADDR_MASTER;  
-    tx_buf[4] = CMD_OTA_CHUNK_REQ_ID; 
+    tx_buf[0] = CMD_SOF_1;
+    tx_buf[1] = CMD_SOF_2;
+    tx_buf[2] = ADDR_SLAVE;
+    tx_buf[3] = ADDR_MASTER;
+    tx_buf[4] = CMD_OTA_CHUNK_REQ_ID;
 
     uint16_t payload_len = 4 + 1 + dados.size();
     tx_buf[5] = payload_len & 0xFF;
     tx_buf[6] = (payload_len >> 8) & 0xFF;
 
     int idx = 7;
-    memcpy(&tx_buf[idx], &offset, 4); 
+    memcpy(&tx_buf[idx], &offset, 4);
     idx += 4;
-    tx_buf[idx++] = (uint8_t)dados.size();
+    tx_buf[idx++] = (uint8_t) dados.size();
     memcpy(&tx_buf[idx], dados.data(), dados.size());
     idx += dados.size();
 
     finalizar_pacote_v2(idx); // idx agora aponta para onde vai o CRC
 
-    if(spi_transaction() < 0) return false;
-    if(!esperar_ack(CMD_OTA_CHUNK_REQ_ID)) return false;
-    
+    if(spi_transaction() < 0)
+        return false;
+    if(!esperar_ack(CMD_OTA_CHUNK_REQ_ID))
+        return false;
+
     return true;
 }
 
 int main(int argc, char* argv[])
 {
-    if(argc < 2) { printf("Uso: stm32-updater <bin>\n"); return 1; }
+    if(argc < 2)
+    {
+        printf("Uso: stm32-updater <bin>\n");
+        return 1;
+    }
 
     fd_spi = open(DEVICE, O_RDWR);
-    if(fd_spi < 0) { perror("SPI"); return 1; }
+    if(fd_spi < 0)
+    {
+        perror("SPI");
+        return 1;
+    }
 
-    uint8_t mode = SPI_MODE_0; uint8_t bits = 8; uint32_t speed = SPEED;
+    uint8_t mode = SPI_MODE_0;
+    uint8_t bits = 8;
+    uint32_t speed = SPEED;
     ioctl(fd_spi, SPI_IOC_WR_MODE, &mode);
     ioctl(fd_spi, SPI_IOC_WR_BITS_PER_WORD, &bits);
     ioctl(fd_spi, SPI_IOC_WR_MAX_SPEED_HZ, &speed);
@@ -174,7 +187,11 @@ int main(int argc, char* argv[])
     slave_ready_ptr = &slave_ready;
 
     std::ifstream file(argv[1], std::ios::binary | std::ios::ate);
-    if(!file.is_open()) { printf("Erro Arquivo\n"); return 1; }
+    if(!file.is_open())
+    {
+        printf("Erro Arquivo\n");
+        return 1;
+    }
     uint32_t file_size = file.tellg();
     file.seekg(0, std::ios::beg);
 
@@ -184,11 +201,14 @@ int main(int argc, char* argv[])
     // 1. START
     printf("[1/3] Start OTA...\n");
     memset(tx_buf, 0, 64);
-    
-    tx_buf[0] = CMD_SOF_1; tx_buf[1] = CMD_SOF_2;
-    tx_buf[2] = ADDR_SLAVE; tx_buf[3] = ADDR_MASTER;
+
+    tx_buf[0] = CMD_SOF_1;
+    tx_buf[1] = CMD_SOF_2;
+    tx_buf[2] = ADDR_SLAVE;
+    tx_buf[3] = ADDR_MASTER;
     tx_buf[4] = CMD_OTA_START_REQ_ID;
-    tx_buf[5] = 4; tx_buf[6] = 0; 
+    tx_buf[5] = 4;
+    tx_buf[6] = 0;
     memcpy(&tx_buf[7], &file_size, 4);
 
     finalizar_pacote_v2(11);
@@ -213,14 +233,25 @@ int main(int argc, char* argv[])
         size_t bytes_read = file.gcount();
         buffer.resize(bytes_read);
         bool ok = false;
-        for(int r=0; r<3; r++) {
-            if(enviar_chunk_seguro(offset, buffer)) { ok=true; break; }
-            printf("R"); fflush(stdout);
+        for(int r = 0; r < 3; r++)
+        {
+            if(enviar_chunk_seguro(offset, buffer))
+            {
+                ok = true;
+                break;
+            }
+            printf("R");
+            fflush(stdout);
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
-        if(!ok) { printf("\n[ERRO] Offset %d\n", offset); close(fd_spi); return 1; }
+        if(!ok)
+        {
+            printf("\n[ERRO] Offset %d\n", offset);
+            close(fd_spi);
+            return 1;
+        }
         offset += bytes_read;
-        printf("\rProgresso: %d / %d (%d%%)", offset, file_size, (offset*100)/file_size);
+        printf("\rProgresso: %d / %d (%d%%)", offset, file_size, (offset * 100) / file_size);
         fflush(stdout);
         buffer.resize(CHUNK_DATA_SIZE);
     }
@@ -228,12 +259,15 @@ int main(int argc, char* argv[])
     // 3. END
     printf("\n[3/3] Finalizando...\n");
     memset(tx_buf, 0, 64);
-    
-    tx_buf[0] = CMD_SOF_1; tx_buf[1] = CMD_SOF_2;
-    tx_buf[2] = ADDR_SLAVE; tx_buf[3] = ADDR_MASTER;
+
+    tx_buf[0] = CMD_SOF_1;
+    tx_buf[1] = CMD_SOF_2;
+    tx_buf[2] = ADDR_SLAVE;
+    tx_buf[3] = ADDR_MASTER;
     tx_buf[4] = CMD_OTA_END_REQ_ID;
-    tx_buf[5] = 0; tx_buf[6] = 0;
-    
+    tx_buf[5] = 0;
+    tx_buf[6] = 0;
+
     finalizar_pacote_v2(7);
 
     spi_transaction();

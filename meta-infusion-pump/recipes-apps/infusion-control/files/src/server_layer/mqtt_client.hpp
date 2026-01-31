@@ -16,11 +16,11 @@
 // Configurações MQTT
 // ============================================================
 
-const std::string BROKER_ADDR  = "127.0.0.1";
-const uint16_t    BROKER_PORT  = 1883;
-const std::string CLIENT_ID    = "infusion_pump_rpi";
+const std::string BROKER_ADDR = "127.0.0.1";
+const uint16_t BROKER_PORT = 1883;
+const std::string CLIENT_ID = "infusion_pump_rpi";
 
-const std::string TOPIC_CMD    = "bomba/comando";
+const std::string TOPIC_CMD = "bomba/comando";
 const std::string TOPIC_STATUS = "bomba/status";
 
 const uint32_t MAX_PURGE_RATE = 1200; // ml/h
@@ -35,20 +35,14 @@ public:
     using client_type = boost::mqtt5::mqtt_client<boost::asio::ip::tcp::socket>;
 
     MqttClient(boost::asio::io_context& io, InfusionManager& manager)
-        : _io(io),
-          _client(io),
-          _manager(manager),
-          _retry_timer(io)
+        : _io(io), _client(io), _manager(manager), _retry_timer(io)
     {
         setup_manager_callbacks();
     }
 
     void start()
     {
-        _client
-            .brokers(BROKER_ADDR, BROKER_PORT)
-            .credentials(CLIENT_ID)
-            .async_run(boost::asio::detached);
+        _client.brokers(BROKER_ADDR, BROKER_PORT).credentials(CLIENT_ID).async_run(boost::asio::detached);
 
         subscribe_topics();
         receive_loop();
@@ -66,26 +60,17 @@ private:
 
     void subscribe_topics()
     {
-        _client.async_subscribe(
-            boost::mqtt5::subscribe_topic{
-                TOPIC_CMD,
-                boost::mqtt5::qos_e::at_least_once
-            },
-            boost::mqtt5::subscribe_props{},
-            [this](boost::mqtt5::error_code ec,
-                   std::vector<boost::mqtt5::reason_code>,
-                   auto)
-            {
-                if(!ec)
-                    std::cout << "[MQTT] Inscrito em " << TOPIC_CMD << "\n";
-                else
-                {
-                    std::cerr << "[MQTT] Falha inscrição: "
-                              << ec.message()
-                              << " — retry em 5s\n";
-                    schedule_subscribe_retry();
-                }
-            });
+        _client.async_subscribe(boost::mqtt5::subscribe_topic{TOPIC_CMD, boost::mqtt5::qos_e::at_least_once},
+                                boost::mqtt5::subscribe_props{},
+                                [this](boost::mqtt5::error_code ec, std::vector<boost::mqtt5::reason_code>, auto) {
+                                    if(!ec)
+                                        std::cout << "[MQTT] Inscrito em " << TOPIC_CMD << "\n";
+                                    else
+                                    {
+                                        std::cerr << "[MQTT] Falha inscrição: " << ec.message() << " — retry em 5s\n";
+                                        schedule_subscribe_retry();
+                                    }
+                                });
     }
 
     void schedule_subscribe_retry()
@@ -99,28 +84,23 @@ private:
 
     void receive_loop()
     {
-        _client.async_receive(
-            [this](boost::mqtt5::error_code ec,
-                   std::string,
-                   std::string payload,
-                   auto)
+        _client.async_receive([this](boost::mqtt5::error_code ec, std::string, std::string payload, auto) {
+            if(!ec)
             {
-                if(!ec)
-                {
-                    process_command(payload);
-                    receive_loop();
-                    return;
-                }
+                process_command(payload);
+                receive_loop();
+                return;
+            }
 
-                if(ec == boost::mqtt5::client::error::session_expired)
-                {
-                    std::cout << "[MQTT] Sessão expirada — reinscrevendo\n";
-                    subscribe_topics();
-                }
+            if(ec == boost::mqtt5::client::error::session_expired)
+            {
+                std::cout << "[MQTT] Sessão expirada — reinscrevendo\n";
+                subscribe_topics();
+            }
 
-                if(ec != boost::asio::error::operation_aborted)
-                    receive_loop();
-            });
+            if(ec != boost::asio::error::operation_aborted)
+                receive_loop();
+        });
     }
 
     // ========================================================
@@ -145,8 +125,7 @@ private:
             if(!json.contains("action"))
                 return;
 
-            std::string action =
-                boost::json::value_to<std::string>(json.at("action"));
+            std::string action = boost::json::value_to<std::string>(json.at("action"));
 
             std::cout << "[MQTT] Ação: " << action << "\n";
 
@@ -173,7 +152,7 @@ private:
             {
                 if(json.contains("volume") && json.contains("rate"))
                 {
-                    uint32_t vol  = json.at("volume").as_int64();
+                    uint32_t vol = json.at("volume").as_int64();
                     uint32_t rate = json.at("rate").as_int64();
 
                     status = _manager.set_config(vol, rate);
@@ -191,10 +170,7 @@ private:
 
             else if(action == "purge")
             {
-                uint32_t rate =
-                    json.contains("rate")
-                        ? json.at("rate").as_int64()
-                        : MAX_PURGE_RATE;
+                uint32_t rate = json.contains("rate") ? json.at("rate").as_int64() : MAX_PURGE_RATE;
 
                 status = _manager.start_purge(rate);
             }
@@ -205,15 +181,9 @@ private:
 
             else if(action == "bolus")
             {
-                uint32_t vol =
-                    json.contains("volume")
-                        ? json.at("volume").as_int64()
-                        : 5;
+                uint32_t vol = json.contains("volume") ? json.at("volume").as_int64() : 5;
 
-                uint32_t rate =
-                    json.contains("rate")
-                        ? json.at("rate").as_int64()
-                        : 600;
+                uint32_t rate = json.contains("rate") ? json.at("rate").as_int64() : 600;
 
                 status = _manager.start_bolus(vol, rate);
             }
@@ -226,9 +196,7 @@ private:
             {
                 if(json.contains("file_path"))
                 {
-                    std::string path =
-                        boost::json::value_to<std::string>(
-                            json.at("file_path"));
+                    std::string path = boost::json::value_to<std::string>(json.at("file_path"));
 
                     std::cout << "[OTA] Iniciando: " << path << "\n";
                     _manager.start_ota_process(path);
@@ -272,23 +240,16 @@ private:
 
     void setup_manager_callbacks()
     {
-        _manager.set_status_callback(
-            [this](std::string json_payload)
-            {
-                boost::asio::post(_io, [this, json_payload]() {
-                    _client.async_publish<
-                        boost::mqtt5::qos_e::at_most_once>(
-                        TOPIC_STATUS,
-                        json_payload,
-                        boost::mqtt5::retain_e::no,
-                        boost::mqtt5::publish_props{},
-                        [](boost::system::error_code ec) {
-                            if(ec)
-                                std::cerr << "[MQTT] Erro publish: "
-                                          << ec.message() << "\n";
-                        });
-                });
+        _manager.set_status_callback([this](std::string json_payload) {
+            boost::asio::post(_io, [this, json_payload]() {
+                _client.async_publish<boost::mqtt5::qos_e::at_most_once>(
+                    TOPIC_STATUS, json_payload, boost::mqtt5::retain_e::no, boost::mqtt5::publish_props{},
+                    [](boost::system::error_code ec) {
+                        if(ec)
+                            std::cerr << "[MQTT] Erro publish: " << ec.message() << "\n";
+                    });
             });
+        });
     }
 };
 

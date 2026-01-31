@@ -48,14 +48,11 @@ public:
     CommandStatus pause_infusion();
     CommandStatus stop_infusion(); // abort
 
-    CommandStatus set_config(uint32_t volume_ml,
-                             uint32_t rate_ml_h);
+    CommandStatus set_config(uint32_t volume_ml, uint32_t rate_ml_h);
 
-    CommandStatus start_bolus(uint32_t volume_ml,
-                          uint32_t rate_ml_h);
+    CommandStatus start_bolus(uint32_t volume_ml, uint32_t rate_ml_h);
 
     CommandStatus start_purge(uint32_t rate_ml_h);
-
 
     // --------------------------------------------------------
     // Manutenção
@@ -75,6 +72,8 @@ private:
     // Controle thread
     std::atomic<bool> _running{false};
     std::atomic<bool> _maintenance_mode{false};
+    std::atomic<bool> _ota_running{false};
+    std::atomic<bool> _waiting_mcu{false};
 
     std::thread _monitor_thread;
 

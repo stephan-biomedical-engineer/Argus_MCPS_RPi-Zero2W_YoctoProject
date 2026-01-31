@@ -74,31 +74,31 @@ bool Stm32Bridge::send_command(cmd_ids_t req_id, cmd_cmds_t* req_data, cmd_cmds_
     }
 
     // printf("[SPI RAW RX]: ");
-    // for(int rx_byte = 0; rx_byte < 16; rx_byte++) 
-    // { 
-    //     printf("%02X ", _rx_buf[rx_byte]); 
+    // for(int rx_byte = 0; rx_byte < 16; rx_byte++)
+    // {
+    //     printf("%02X ", _rx_buf[rx_byte]);
     // }
     // printf("\n");
 
-    // 4. SCANNER DE SOF (A Mágica da Sincronia) 
+    // 4. SCANNER DE SOF (A Mágica da Sincronia)
     // Em vez de assumir que a resposta está no byte 0 ou 2, procuramos a assinatura.
-    
+
     int sof_index = -1;
     // Varre o buffer procurando AA 55
-    for(int scan_sof_idx = 0; scan_sof_idx < (64 - CMD_HDR_SIZE); scan_sof_idx++) 
+    for(int scan_sof_idx = 0; scan_sof_idx < (64 - CMD_HDR_SIZE); scan_sof_idx++)
     {
-        if(_rx_buf[scan_sof_idx] == CMD_SOF_1_BYTE && _rx_buf[scan_sof_idx+1] == CMD_SOF_2_BYTE) 
+        if(_rx_buf[scan_sof_idx] == CMD_SOF_1_BYTE && _rx_buf[scan_sof_idx + 1] == CMD_SOF_2_BYTE)
         {
             sof_index = scan_sof_idx;
             break;
         }
     }
 
-    if (sof_index < 0) 
+    if(sof_index < 0)
     {
         // Se não achou SOF, é erro de comunicação ou o STM32 não respondeu.
         std::cerr << "[BRIDGE] Erro: SOF nao encontrado. Dump RX (16 bytes): ";
-        for(int rx_byte=0; rx_byte<16; rx_byte++) 
+        for(int rx_byte = 0; rx_byte < 16; rx_byte++)
         {
             printf("%02X ", _rx_buf[rx_byte]);
         }
@@ -108,12 +108,12 @@ bool Stm32Bridge::send_command(cmd_ids_t req_id, cmd_cmds_t* req_data, cmd_cmds_
 
     // Aponta para o início real do pacote encontrado
     uint8_t* p_packet = &_rx_buf[sof_index];
-    
+
     // Calcula tamanho total esperado
     // Header V2 tem 7 bytes. O Payload Size está nos bytes 5 e 6 (indices relativos ao SOF).
     // p_packet[0]=AA, [1]=55, [2]=DST, [3]=SRC, [4]=ID, [5]=SizeL, [6]=SizeH
-    
-    uint16_t payload_len = utl_io_get16_fl(&p_packet[5]); 
+
+    uint16_t payload_len = utl_io_get16_fl(&p_packet[5]);
     size_t total_valid_len = CMD_HDR_SIZE + payload_len + CMD_TRAILER_SIZE;
 
     // Decodifica a partir do SOF encontrado

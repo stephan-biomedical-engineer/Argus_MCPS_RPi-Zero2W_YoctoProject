@@ -101,7 +101,7 @@ typedef struct __attribute__((packed)) cmd_set_config_req_s
 
 typedef struct __attribute__((packed)) cmd_set_config_res_s
 {
-    uint8_t status; 
+    uint8_t status;
 } cmd_set_config_res_t;
 
 typedef struct __attribute__((packed)) cmd_status_payload_s

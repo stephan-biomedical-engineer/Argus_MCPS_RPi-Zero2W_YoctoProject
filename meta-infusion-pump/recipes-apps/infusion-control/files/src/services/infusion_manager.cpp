@@ -14,20 +14,30 @@ static std::string state_to_string(uint8_t state)
 {
     switch(state)
     {
-        case 0:  return "POWER_ON";
-        case 1:  return "IDLE";
-        case 2:  return "RUNNING";
-        case 3:  return "BOLUS";
-        case 4:  return "PURGE";
-        case 5:  return "PAUSED";
-        case 6:  return "KVO";
-        case 7:  return "END";
-        case 8:
-        case 9:
-        case 10: return "ALARM";
-        case 11: return "OFF";
-        default:
-            return "UNKNOWN(" + std::to_string(state) + ")";
+    case 0:
+        return "POWER_ON";
+    case 1:
+        return "IDLE";
+    case 2:
+        return "RUNNING";
+    case 3:
+        return "BOLUS";
+    case 4:
+        return "PURGE";
+    case 5:
+        return "PAUSED";
+    case 6:
+        return "KVO";
+    case 7:
+        return "END";
+    case 8:
+    case 9:
+    case 10:
+        return "ALARM";
+    case 11:
+        return "OFF";
+    default:
+        return "UNKNOWN(" + std::to_string(state) + ")";
     }
 }
 
@@ -35,11 +45,7 @@ static std::string state_to_string(uint8_t state)
 // Ciclo de vida
 // ============================================================
 
-InfusionManager::InfusionManager(Stm32Bridge& bridge,
-                                 HalGpio& reset_pin)
-    : _bridge(bridge),
-      _reset_pin(reset_pin)
-{}
+InfusionManager::InfusionManager(Stm32Bridge& bridge, HalGpio& reset_pin) : _bridge(bridge), _reset_pin(reset_pin) {}
 
 InfusionManager::~InfusionManager()
 {
@@ -78,6 +84,45 @@ void InfusionManager::monitor_loop()
 {
     while(_running)
     {
+        // ============================================
+        // Aguardando STM32 voltar após OTA
+        // ============================================
+        if (_waiting_mcu)
+        {
+            cmd_cmds_t req{}, res{};
+
+            bool ok = false;
+
+            {
+                std::lock_guard<std::mutex> lock(_spi_mutex);
+                ok = _bridge.send_command(CMD_GET_STATUS_REQ_ID, &req, &res);
+            }
+
+            if (ok)
+            {
+                auto state = res.status_res.status_data.current_state;
+
+                if (state == 0 || state == 1) // POWER_ON ou IDLE
+                {
+                    std::cout << "[OTA] STM32 boot concluído\n";
+
+                    _waiting_mcu = false;
+                    _ota_running = false;
+                    _maintenance_mode = false;
+
+                    std::lock_guard<std::mutex> lock(_spi_mutex);
+                    _bridge.resume_hardware();
+                }
+            }
+
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            continue;
+        }
+
+
+        // ============================================
+        // Manutenção normal
+        // ============================================
         if(_maintenance_mode)
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
@@ -91,6 +136,10 @@ void InfusionManager::monitor_loop()
             std::lock_guard<std::mutex> lock(_spi_mutex);
             ok = _bridge.send_command(CMD_GET_STATUS_REQ_ID, &req, &res);
         }
+
+        // ============================================
+        // Monitoramento normal
+        // ============================================
 
         if(ok && _status_cb)
         {
@@ -148,14 +197,13 @@ CommandStatus InfusionManager::stop_infusion()
     return static_cast<CommandStatus>(res.action_res.status);
 }
 
-CommandStatus InfusionManager::set_config(uint32_t volume_ml,
-                                          uint32_t rate_ml_h)
+CommandStatus InfusionManager::set_config(uint32_t volume_ml, uint32_t rate_ml_h)
 {
     cmd_cmds_t req{}, res{};
 
-    req.config_req.config.volume     = volume_ml;
-    req.config_req.config.flow_rate  = rate_ml_h;
-    req.config_req.config.diameter   = 1;
+    req.config_req.config.volume = volume_ml;
+    req.config_req.config.flow_rate = rate_ml_h;
+    req.config_req.config.diameter = 1;
 
     std::lock_guard<std::mutex> lock(_spi_mutex);
 
@@ -165,12 +213,11 @@ CommandStatus InfusionManager::set_config(uint32_t volume_ml,
     return static_cast<CommandStatus>(res.config_res.status);
 }
 
-CommandStatus InfusionManager::start_bolus(uint32_t volume_ml,
-                                           uint32_t rate_ml_h)
+CommandStatus InfusionManager::start_bolus(uint32_t volume_ml, uint32_t rate_ml_h)
 {
     cmd_cmds_t req{}, res{};
     req.bolus_req.payload.bolus_volume = volume_ml;
-    req.bolus_req.payload.bolus_rate   = rate_ml_h;
+    req.bolus_req.payload.bolus_rate = rate_ml_h;
 
     std::lock_guard<std::mutex> lock(_spi_mutex);
 
@@ -181,8 +228,6 @@ CommandStatus InfusionManager::start_bolus(uint32_t volume_ml,
 
     return res.action_res.status;
 }
-
-
 
 CommandStatus InfusionManager::start_purge(uint32_t rate_ml_h)
 {
@@ -208,18 +253,22 @@ CommandStatus InfusionManager::start_purge(uint32_t rate_ml_h)
     return res.action_res.status;
 }
 
-
-
 // ============================================================
 // OTA
 // ============================================================
 
 void InfusionManager::start_ota_process(const std::string& filepath)
 {
+    if(_ota_running)
+    {
+        std::cout << "[OTA] Ignorado — OTA já em andamento\n";
+        return;
+    }
+
+    _ota_running = true;
     _maintenance_mode = true;
 
-    std::thread([this, filepath]()
-    {
+    std::thread([this, filepath]() {
         {
             std::lock_guard<std::mutex> lock(_spi_mutex);
             _bridge.suspend_hardware();
@@ -230,12 +279,16 @@ void InfusionManager::start_ota_process(const std::string& filepath)
 
         if(WEXITSTATUS(ret) == 0)
         {
-            std::cout << "[OTA] Sucesso — aguardando swap (30s)\n";
-            std::this_thread::sleep_for(std::chrono::seconds(30));
+            std::cout << "[OTA] Sucesso — aguardando swap (30s ~ 1min30s)\n";
+            _waiting_mcu = true;
+            return;
         }
         else
         {
             std::cerr << "[OTA] Falhou\n";
+            _ota_running = false;
+            _maintenance_mode = false;
+            return;
         }
 
         {
@@ -243,8 +296,8 @@ void InfusionManager::start_ota_process(const std::string& filepath)
             _bridge.resume_hardware();
         }
 
+        _ota_running = false;
         _maintenance_mode = false;
-
     }).detach();
 }
 

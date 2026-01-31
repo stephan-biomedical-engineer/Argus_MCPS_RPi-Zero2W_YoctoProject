@@ -212,7 +212,6 @@ bool cmd_encode_action_bolus_req(uint8_t dst, uint8_t src, cmd_action_bolus_req_
     *size = (pbuf - buffer);
 
     return true;
-
 }
 
 // [MUDANÇA CRÍTICA ENCODE] Payloads Complexos precisam de write_sof() manual

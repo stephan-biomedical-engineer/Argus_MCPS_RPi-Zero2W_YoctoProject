@@ -28,8 +28,11 @@ INC_FLAGS := \
 	-Isystem \
 	-Iuser_application
 
-CXXFLAGS += -Wall -O2 -std=c++17 -s $(INC_FLAGS)
-CFLAGS   += -Wall -O2 -std=c99 -s $(INC_FLAGS)
+# Se STRIP_OPT não for definido externamente, usa -s (comportamento local)
+STRIP_OPT ?= -s
+
+CXXFLAGS += -Wall -O2 -std=c++17 $(STRIP_OPT) $(INC_FLAGS)
+CFLAGS   += -Wall -O2 -std=c99 $(STRIP_OPT) $(INC_FLAGS)
 
 # ===============================
 # MAIN DAEMON 

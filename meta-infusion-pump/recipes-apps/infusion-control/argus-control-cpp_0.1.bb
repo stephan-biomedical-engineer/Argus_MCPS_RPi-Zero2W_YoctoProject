@@ -15,6 +15,7 @@ SRC_URI = " \
 "
 
 S = "${WORKDIR}/src"
+EXTRA_OEMAKE += "STRIP_OPT=''"
 
 # --- COMPILE ---
 # Yocto exports environment variables CXX, LDFLAGS, etc.
