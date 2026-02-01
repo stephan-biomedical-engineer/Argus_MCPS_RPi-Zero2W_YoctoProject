@@ -10,3 +10,7 @@
 	path = meta-openembedded
 	url = https://git.openembedded.org/meta-openembedded
 	branch = scarthgap
+[submodule "meta-rauc"]
+    path = meta-rauc
+    url = https://github.com/rauc/meta-rauc.git
+    branch = scarthgap
