@@ -60,7 +60,7 @@ fdt get value orig_bootargs /chosen bootargs
 
 # 8. Construir o novo bootargs
 # Concatenamos: [Originais da GPU] + [Nossa escolha de Root] + [Configs Extras]
-setenv bootargs "${orig_bootargs} root=${root_part} rootfstype=ext4 rootwait panic=10"
+setenv bootargs "${orig_bootargs} root=${root_part} rauc.slot=${rauc_slot} rootfstype=ext4 rootwait panic=10"
 
 echo "Booting with final args: ${bootargs}"
 
