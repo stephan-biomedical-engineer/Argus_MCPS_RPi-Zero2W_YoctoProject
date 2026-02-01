@@ -6,6 +6,8 @@ require recipes-core/images/core-image-minimal.bb
 
 FILESEXTRAPATHS:prepend := "${THISDIR}:"
 
+PV = "${ARGUS_VERSION_STRING}"
+
 # kernel-module-x-bcm2835 instead kernel-modules (full)
 
 # --- PACOTES DO SISTEMA ---
@@ -68,8 +70,8 @@ IMAGE_BOOT_FILES:append = " \
 "
 
 create_version_file() {
-    echo "Version 1.0.1 - Update by Over-The-Air" > ${IMAGE_ROOTFS}/etc/ota_version.txt
-    date >> ${IMAGE_ROOTFS}/etc/ota_version.txt
+    echo "Argus - Firmware v${ARGUS_VERSION_STRING}" > ${IMAGE_ROOTFS}/etc/ota_version.txt
+    echo "Build Date: $(date)" >> ${IMAGE_ROOTFS}/etc/ota_version.txt
 }
 
 ROOTFS_POSTPROCESS_COMMAND += "create_version_file; "

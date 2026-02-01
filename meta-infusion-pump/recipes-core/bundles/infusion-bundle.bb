@@ -1,4 +1,4 @@
-SUMMARY = "Bundle de Atualizacao OTA para Bomba de Infusao"
+SUMMARY = "Bundle update for Over-The-Air tool Argus Medical Pump Control System"
 LICENSE = "MIT"
 
 inherit bundle
@@ -7,8 +7,8 @@ inherit bundle
 RAUC_BUNDLE_COMPATIBLE = "infusion-pump-rpi"
 
 # Versão do Pacote
-RAUC_BUNDLE_VERSION = "v1.0.1"
-RAUC_BUNDLE_DESCRIPTION = "Atualizacao OTA Teste v1.0.1"
+RAUC_BUNDLE_VERSION = "${ARGUS_VERSION_STRING}"
+RAUC_BUNDLE_DESCRIPTION = "OTA updated v${ARGUS_VERSION_STRING}"
 
 # O que vai dentro do pacote?
 RAUC_BUNDLE_SLOTS = "rootfs"
