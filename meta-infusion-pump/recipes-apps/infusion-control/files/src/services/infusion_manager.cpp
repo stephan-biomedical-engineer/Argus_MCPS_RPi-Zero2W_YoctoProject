@@ -203,7 +203,7 @@ CommandStatus InfusionManager::set_config(uint32_t volume_ml, uint32_t rate_ml_h
 
     req.config_req.config.volume = volume_ml;
     req.config_req.config.flow_rate = rate_ml_h;
-    req.config_req.config.diameter = 1;
+    req.config_req.config.diameter = 20;
 
     std::lock_guard<std::mutex> lock(_spi_mutex);
 

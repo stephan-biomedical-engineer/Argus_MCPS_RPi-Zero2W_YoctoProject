@@ -37,6 +37,7 @@ IMAGE_INSTALL:append = " \
     devmem2 \
     mosquitto \
     mosquitto-clients \
+    avahi-daemon \
     libgpiod \
     libgpiod-tools \
     paho-mqtt-c \
