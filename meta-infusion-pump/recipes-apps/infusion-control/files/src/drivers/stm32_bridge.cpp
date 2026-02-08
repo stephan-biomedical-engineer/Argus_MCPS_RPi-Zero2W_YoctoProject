@@ -96,13 +96,15 @@ bool Stm32Bridge::send_command(cmd_ids_t req_id, cmd_cmds_t* req_data, cmd_cmds_
 
     if(sof_index < 0)
     {
+        std::cerr << "[BRIDGE] Erro: SOF desalinhado.";
         // Se não achou SOF, é erro de comunicação ou o STM32 não respondeu.
-        std::cerr << "[BRIDGE] Erro: SOF nao encontrado. Dump RX (16 bytes): ";
-        for(int rx_byte = 0; rx_byte < 16; rx_byte++)
-        {
-            printf("%02X ", _rx_buf[rx_byte]);
-        }
-        printf("\n");
+        // std::cerr << "[BRIDGE] Erro: SOF nao encontrado. Dump RX (16 bytes): ";
+        // for(int rx_byte = 0; rx_byte < 16; rx_byte++)
+        // {
+        //     printf("%02X ", _rx_buf[rx_byte]);
+        // }
+        // printf("\n");
+
         return false;
     }
 

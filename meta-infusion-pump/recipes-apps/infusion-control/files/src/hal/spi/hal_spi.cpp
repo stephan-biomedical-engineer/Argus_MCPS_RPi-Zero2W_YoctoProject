@@ -28,42 +28,57 @@ void HalSpi::close_device()
 
 bool HalSpi::open_device()
 {
-    // Se já estiver aberto, não faz nada
-    if(_fd >= 0)
-        return true;
+    // 1. Garantia de estado limpo: se houver um FD antigo, fecha.
+    if(_fd >= 0) {
+        close_device();
+    }
 
     _fd = ::open(_stored_path.c_str(), O_RDWR);
 
     if(_fd < 0)
     {
-        std::cerr << "[SPI] Falha ao abrir: " << _stored_path << std::endl;
+        // Silenciamos o erro para não poluir o log durante o Swap do MCUboot
+        // std::cerr << "[SPI] Falha ao abrir: " << _stored_path << std::endl;
         return false;
     }
 
     uint8_t mode = SPI_MODE_0;
     uint8_t bits = 8;
 
-    if(ioctl(_fd, SPI_IOC_WR_MODE, &mode) < 0)
+    // 2. Aplicação forçada de IOCTLs (Crucial após o stm32-updater fechar)
+    if(ioctl(_fd, SPI_IOC_WR_MODE, &mode) < 0 ||
+       ioctl(_fd, SPI_IOC_RD_MODE, &mode) < 0) // Seta e valida
     {
-        std::cerr << "[SPI] Erro setando Mode" << std::endl;
         close_device();
         return false;
     }
 
     if(ioctl(_fd, SPI_IOC_WR_BITS_PER_WORD, &bits) < 0)
     {
-        std::cerr << "[SPI] Erro setando Bits" << std::endl;
         close_device();
         return false;
     }
 
     if(ioctl(_fd, SPI_IOC_WR_MAX_SPEED_HZ, &_speed) < 0)
     {
-        std::cerr << "[SPI] Erro setando Speed" << std::endl;
         close_device();
         return false;
     }
 
+    // 3. LIMPEZA DE BARRAMENTO (O "Pulo do Gato")
+    // Quando o STM32 reinicia, o SPI pode ter ficado com bits parciais.
+    // Enviamos 64 bytes de Zeros para limpar o buffer do driver do Kernel.
+    uint8_t dummy_tx[64] = {0};
+    uint8_t dummy_rx[64] = {0};
+    
+    // Usamos o método transfer interno. Se falhar aqui, o driver está ruim.
+    if(!transfer(dummy_tx, dummy_rx, 64)) {
+        std::cerr << "[SPI] Erro no flush inicial." << std::endl;
+        close_device();
+        return false;
+    }
+
+    std::cout << "[SPI] Barramento reinicializado: " << _stored_path << std::endl;
     return true;
 }
 

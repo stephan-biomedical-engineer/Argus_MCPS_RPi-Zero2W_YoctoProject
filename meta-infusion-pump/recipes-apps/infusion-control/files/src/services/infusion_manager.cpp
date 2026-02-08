@@ -82,36 +82,45 @@ void InfusionManager::set_status_callback(StatusCallback cb)
 
 void InfusionManager::monitor_loop()
 {
+    int consecutive_errors = 0;
+
     while(_running)
     {
         // ============================================
-        // Aguardando STM32 voltar após OTA
+        // Aguardando STM32 voltar após OTA (Swap do MCUboot)
         // ============================================
         if (_waiting_mcu)
         {
             cmd_cmds_t req{}, res{};
-
             bool ok = false;
 
             {
                 std::lock_guard<std::mutex> lock(_spi_mutex);
+                
+                // 1. Tenta abrir o hardware do zero (reconfigura ioctls)
+                _bridge.resume_hardware(); 
+                
+                // 2. Tenta a comunicação
                 ok = _bridge.send_command(CMD_GET_STATUS_REQ_ID, &req, &res);
-            }
 
-            if (ok)
-            {
-                auto state = res.status_res.status_data.current_state;
-
-                if (state == 0 || state == 1) // POWER_ON ou IDLE
+                if (ok)
                 {
-                    std::cout << "[OTA] STM32 boot concluído\n";
-
-                    _waiting_mcu = false;
-                    _ota_running = false;
-                    _maintenance_mode = false;
-
-                    std::lock_guard<std::mutex> lock(_spi_mutex);
-                    _bridge.resume_hardware();
+                    auto state = res.status_res.status_data.current_state;
+                    // POWER_ON (0) ou IDLE (1) indica que a app subiu
+                    if (state == 0 || state == 1) 
+                    {
+                        std::cout << "[OTA] STM32 Boot Concluido e App Detectada!\n";
+                        _waiting_mcu = false;
+                        _ota_running = false;
+                        _maintenance_mode = false;
+                        // Mantemos o hardware aberto (resume_hardware já foi chamado acima)
+                    }
+                }
+                else 
+                {
+                    // 3. FALHOU: O STM32 ainda está em swap ou o driver SPI "sujou".
+                    // Fechamos o device para garantir limpeza absoluta para a próxima tentativa.
+                    _bridge.suspend_hardware();
                 }
             }
 
@@ -119,38 +128,58 @@ void InfusionManager::monitor_loop()
             continue;
         }
 
-
         // ============================================
-        // Manutenção normal
+        // Manutenção normal ou Modo OTA de Transferência
         // ============================================
         if(_maintenance_mode)
         {
+            // Enquanto o stm32-updater está rodando, não tocamos no SPI
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
             continue;
         }
 
+        // ============================================
+        // Monitoramento normal (Operação 1Hz)
+        // ============================================
         cmd_cmds_t req{}, res{};
-
         bool ok;
+
         {
             std::lock_guard<std::mutex> lock(_spi_mutex);
             ok = _bridge.send_command(CMD_GET_STATUS_REQ_ID, &req, &res);
         }
 
-        // ============================================
-        // Monitoramento normal
-        // ============================================
-
-        if(ok && _status_cb)
+        if(ok)
         {
-            auto& s = res.status_res.status_data;
+            consecutive_errors = 0;
 
-            boost::json::object json;
-            json["state"] = state_to_string(s.current_state);
-            json["infused_volume_ml"] = s.volume;
-            json["real_rate_ml_h"] = s.flow_rate_set;
+            if(_status_cb)
+            {
+                auto& s = res.status_res.status_data;
+                boost::json::object json;
+                json["state"] = state_to_string(s.current_state);
+                json["infused_volume_ml"] = s.volume;
+                json["real_rate_ml_h"] = s.flow_rate_set;
+                _status_cb(boost::json::serialize(json));
+            }
+        }
+        else
+        {
+            consecutive_errors++;
 
-            _status_cb(boost::json::serialize(json));
+            if(consecutive_errors >= 5)
+            {
+                std::cerr << "[MANAGER] Perda de sincronia persistente. Resetando driver...\n";
+                std::lock_guard<std::mutex> lock(_spi_mutex);
+                _bridge.suspend_hardware();
+                std::this_thread::sleep_for(std::chrono::milliseconds(200));
+                _bridge.resume_hardware();
+                consecutive_errors = 0;
+            }
+            else
+            {
+                std::cerr << "[MANAGER] Falha de comunicação (" << consecutive_errors << "/5)\n";
+            }
         }
 
         std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -268,36 +297,43 @@ void InfusionManager::start_ota_process(const std::string& filepath)
     _ota_running = true;
     _maintenance_mode = true;
 
+    // Criamos a thread para não bloquear o io.run() (Main Loop)
     std::thread([this, filepath]() {
         {
+            // 1. LIBERAÇÃO TOTAL: Fecha o File Descriptor e libera o pino GPIO
+            // Isso evita que o stm32-updater dispute o device /dev/spidev0.0
             std::lock_guard<std::mutex> lock(_spi_mutex);
+            std::cout << "[OTA] Suspendendo hardware para o updater...\n";
             _bridge.suspend_hardware();
         }
 
+        // 2. Executa o updater como processo externo
         std::string cmd = "/usr/bin/stm32-updater " + filepath;
         int ret = std::system(cmd.c_str());
 
         if(WEXITSTATUS(ret) == 0)
         {
-            std::cout << "[OTA] Sucesso — aguardando swap (30s ~ 1min30s)\n";
-            _waiting_mcu = true;
-            return;
+            std::cout << "[OTA] Upload concluído com sucesso.\n";
+            std::cout << "[OTA] Aguardando MCUboot realizar o Swap (Pode levar até 90s)...\n";
+            
+            // Ativamos a flag de espera. 
+            // O monitor_loop() tentará dar resume_hardware() quando o STM32 responder.
+            _waiting_mcu = true; 
+            
+            // Importante: Não damos resume_hardware() aqui. 
+            // Deixamos o monitor_loop tentar falar com o STM32 em IDLE.
         }
         else
         {
-            std::cerr << "[OTA] Falhou\n";
-            _ota_running = false;
-            _maintenance_mode = false;
-            return;
-        }
-
-        {
+            std::cerr << "[OTA] Processo de upload falhou (Retorno: " << WEXITSTATUS(ret) << ")\n";
+            
+            // Se falhou, tentamos retomar o hardware para a bomba não ficar "morta"
             std::lock_guard<std::mutex> lock(_spi_mutex);
             _bridge.resume_hardware();
+            
+            _ota_running = false;
+            _maintenance_mode = false;
         }
-
-        _ota_running = false;
-        _maintenance_mode = false;
     }).detach();
 }
 
