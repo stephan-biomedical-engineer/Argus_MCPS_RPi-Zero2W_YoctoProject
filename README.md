@@ -1,6 +1,6 @@
 ---
 
-# meta-infusion-pump (Argus Project) 💉🛡️
+# Argus Medical Control Infusion Pump Gateway Project
 
 This is the Yocto Project meta-layer developed for the **Argus Infusion Pump IoT Gateway**.
 The system is based on a custom Embedded Linux environment for the **Raspberry Pi Zero 2 W** board, strictly designed with a focus on **Medical Cybersecurity**, **High Availability**, and **Hardware Integration**.
