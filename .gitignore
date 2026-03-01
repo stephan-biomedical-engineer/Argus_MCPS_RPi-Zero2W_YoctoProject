@@ -18,3 +18,20 @@ __pycache__/
 # Mas vamos usar submodules, então não precisa ignorar aqui, o git gerencia.
 build-systemd/
 build-optimized/
+
+meta-infusion-pump/recipes-connectivity/mosquitto/files/certs/
+meta-infusion-pump/recipes-core/bundles/files/*.pem
+meta-infusion-pump/recipes-support/rauc/files/*.pem
+meta-infusion-pump/recipes-support/rauc/files/
+meta-infusion-pump/recipes-apps/infusion-control/files/src/build/
+
+certs/
+
+poky/
+# Yocto/BitBake artifacts
+bitbake.lock
+pseudodone
+toaster.sqlite
+toaster_ui.log
+boot.txt
+update.txtbuild/

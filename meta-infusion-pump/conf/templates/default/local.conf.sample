@@ -27,8 +27,8 @@ CONF_VERSION = "2"
 DEFAULT_TIMEZONE = "America/Sao_Paulo"
 REPRODUCIBLE_MAIN_PACKAGE_STATIC_ID = "1"
 
-BB_NUMBER_THREADS = "10"
-PARALLEL_MAKE = "-j10"
+#BB_NUMBER_THREADS = "10"
+#PARALLEL_MAKE = "-j10"
 
 DL_DIR ?= "${TOPDIR}/../build/downloads"
 
@@ -105,3 +105,4 @@ DISTRO_FEATURES:append = " rauc"
 RPI_USE_U_BOOT = "1"
 
 KERNEL_IMAGETYPE = "zImage"
+INHERIT+="toaster buildhistory"
