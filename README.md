@@ -88,6 +88,7 @@ bitbake infusion-bundle
 ## 🛠️ Authorship
 
 Developed by **Stephan Costa Barros** - Federal University of Uberlandia, Brazil, Electrical Engineering Department.
+
 Oriented by **Marcelo Barros de Almeida** & **Alcimar Barbosa Soares** - Federal University of Uberlandia, Brazil, Electrical Engineering Department.
 
 ---
