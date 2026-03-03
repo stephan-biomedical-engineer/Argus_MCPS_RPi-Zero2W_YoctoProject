@@ -301,7 +301,7 @@ void InfusionManager::start_ota_process(const std::string& filepath)
     std::thread([this, filepath]() {
         {
             // 1. LIBERAÇÃO TOTAL: Fecha o File Descriptor e libera o pino GPIO
-            // Isso evita que o stm32-updater dispute o device /dev/spidev0.0
+            // Isso evita que o stm32-updater dispute o device /dev/spidev0.1
             std::lock_guard<std::mutex> lock(_spi_mutex);
             std::cout << "[OTA] Suspendendo hardware para o updater...\n";
             _bridge.suspend_hardware();

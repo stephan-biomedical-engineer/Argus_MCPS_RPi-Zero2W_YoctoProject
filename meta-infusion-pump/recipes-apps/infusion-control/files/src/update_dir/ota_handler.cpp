@@ -19,8 +19,8 @@ extern "C"
 #include "utl_crc16.h"
 }
 
-static const char* DEVICE = "/dev/spidev0.0";
-static const int GPIO_READY_PIN = 25;
+static const char* DEVICE = "/dev/spidev0.1";
+static const int GPIO_READY_PIN = 5;
 static const uint32_t SPEED = 100000;
 static const int CHUNK_DATA_SIZE = 48;
 
