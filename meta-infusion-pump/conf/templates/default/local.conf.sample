@@ -75,18 +75,11 @@ ENABLE_PWM = "1"
 KERNEL_DEVICETREE:append = " overlays/pwm-2chan.dtbo"
 IMAGE_INSTALL:append = " kernel-devicetree"
 
-#RPI_EXTRA_CONFIG += " \n\
-#dtparam=spi=on \n\
-#dtparam=pwm=on \n\
-#dtoverlay=pwm-2chan,pin=18,func=2,pin2=19,func2=2 \n\
-#"
-
 # Desabilita o áudio que compete pelo hardware de PWM
 DT_OVERLAY_CONFIG:append = " dtparam=audio=off"
 
-# Configuração limpa para os dois canais
 RPI_EXTRA_CONFIG += " \n\
-dtparam=spi=on \n\
+dtoverlay=spi0-2cs,cs0_pin=8,cs1_pin=17 \n\
 dtparam=pwm=on \n\
 dtoverlay=pwm-2chan \n\
 dtparam=pin=18,func=2 \n\
