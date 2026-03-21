@@ -3,36 +3,10 @@ ctrl_interface_group=0
 update_config=1
 
 network={
-    ssid="Salete"
-    psk="salt1234"
+    ssid="NOME_DA_SUA_REDE_1"
+    psk="SUA_SENHA_AQUI"
     proto=RSN
     key_mgmt=WPA-PSK
     pairwise=CCMP
     auth_alg=OPEN
-}
-
-network={
-    ssid="lab2_2.4Ghz"
-    psk="lmest123"
-    proto=RSN
-    key_mgmt=WPA-PSK
-    pairwise=CCMP
-    auth_alg=OPEN
-    priority=2
-}
-
-network={
-    ssid="Redmi Note 11_78jZ"
-    psk="tenis1234"
-    proto=RSN
-    key_mgmt=WPA-PSK
-    pairwise=CCMP
-    auth_alg=OPEN
-    priority=3
-}
-
-network={
-    ssid="TP-LINK_SRJO"
-    key_mgmt=NONE
-    priority=2
 }
