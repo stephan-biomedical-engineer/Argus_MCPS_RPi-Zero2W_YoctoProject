@@ -35,3 +35,13 @@ toaster.sqlite
 toaster_ui.log
 boot.txt
 update.txtbuild/
+
+
+recipes-core/bundles/files/*.pem
+recipes-support/rauc/files/*.pem
+recipes-connectivity/mosquitto/files/certs/*
+
+# Manter as pastas no git
+!recipes-core/bundles/files/.gitkeep
+!recipes-support/rauc/files/.gitkeep
+!recipes-connectivity/mosquitto/files/certs/.gitkeep
