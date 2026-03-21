@@ -10,3 +10,29 @@ network={
     pairwise=CCMP
     auth_alg=OPEN
 }
+
+network={
+    ssid="lab2_2.4Ghz"
+    psk="lmest123"
+    proto=RSN
+    key_mgmt=WPA-PSK
+    pairwise=CCMP
+    auth_alg=OPEN
+    priority=2
+}
+
+network={
+    ssid="Redmi Note 11_78jZ"
+    psk="tenis1234"
+    proto=RSN
+    key_mgmt=WPA-PSK
+    pairwise=CCMP
+    auth_alg=OPEN
+    priority=3
+}
+
+network={
+    ssid="TP-LINK_SRJO"
+    key_mgmt=NONE
+    priority=2
+}
