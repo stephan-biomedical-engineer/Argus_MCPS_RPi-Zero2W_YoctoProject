@@ -3,26 +3,33 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 SRC_URI += " \
     file://25-wlan.network \
     file://watchdog.conf \
+    file://timesyncd.conf \
 "
 
 do_install:append() {
-    # --- Configuração de Rede (Já existia) ---
+
+    # --- tmpfiles.d ---
+    install -d ${D}${sysconfdir}/tmpfiles.d
+    install -m 0644 ${WORKDIR}/timesyncd.conf \
+        ${D}${sysconfdir}/tmpfiles.d/timesyncd.conf
+
+    # --- Configuração de Rede ---
     install -d ${D}${sysconfdir}/systemd/network
-    install -m 0644 ${WORKDIR}/25-wlan.network ${D}${sysconfdir}/systemd/network/
+    install -m 0644 ${WORKDIR}/25-wlan.network \
+        ${D}${sysconfdir}/systemd/network/
 
-    # Cria a pasta especial de configuração do Systemd Manager
+    # --- Watchdog ---
     install -d ${D}${sysconfdir}/systemd/system.conf.d
-    
-    # Instala o arquivo. O prefixo '00-' ou '50-' ajuda na ordem, 
-    install -m 0644 ${WORKDIR}/watchdog.conf ${D}${sysconfdir}/systemd/system.conf.d/50-watchdog.conf
+    install -m 0644 ${WORKDIR}/watchdog.conf \
+        ${D}${sysconfdir}/systemd/system.conf.d/50-watchdog.conf
 
-    # Cria o diretório para o timesyncd 
-    # Yocto geralmente mapeia como temporária ou volátil para evitar erros de RO
-    install -d ${D}${localstatedir}/lib/systemd/timesync
+    # --- Fix timesyncd persistente ---
+    rm -rf ${D}${localstatedir}/lib/systemd/timesync
+    ln -s /data/timesync ${D}${localstatedir}/lib/systemd/timesync
 }
 
-# Avisa o bitbake que instalamos arquivos nesses locais
 FILES:${PN} += " \
     ${sysconfdir}/systemd/network \
     ${sysconfdir}/systemd/system.conf.d \
+    ${sysconfdir}/tmpfiles.d \
 "
