@@ -44,7 +44,7 @@ To build the image, you must generate development certificates. We provide a hel
 
 ```bash
 # Generate dummy certificates for development
-./tools/generate_dev_certs.sh
+./meta-infusion-pump/generate_dev_certs.sh
 ```
 
 This script will populate the necessary directories in `recipes-connectivity/mosquitto/`, `recipes-support/rauc/`, and `recipes-core/bundles/` with the required `.pem`, `.crt`, and `.key` files.
