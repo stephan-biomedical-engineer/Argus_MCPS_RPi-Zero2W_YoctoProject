@@ -1,8 +1,8 @@
 #!/bin/bash
 # NUNCA USE ESTES CERTIFICADOS EM PRODUÇÃO!
 
-# Garante que estamos na pasta correta
-cd "$(dirname "$0")"/..
+# Garante que estamos na pasta da layer (meta-infusion-pump/)
+cd "$(dirname "$0")"
 ROOT_DIR=$(pwd)
 
 echo "--- Iniciando Geração de Certificados de DEV ---"
@@ -37,9 +37,9 @@ openssl x509 -req -in backend.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out 
 
 # Organização
 mv ca.crt server.crt server.key $CERT_DEST/
-mkdir -p $ROOT_DIR/../backend_certs/
-mv backend.crt backend.key $CERT_DEST/ca.key ./*.csr ./*.srl $ROOT_DIR/../backend_certs/
+mkdir -p ${ROOT_DIR}/../backend_certs/
+mv backend.crt backend.key $CERT_DEST/ca.key ./*.csr ./*.srl ${ROOT_DIR}/../backend_certs/
 
 echo "--- Sucesso! ---"
 echo "Certificados da Bomba: $CERT_DEST"
-echo "Certificados do seu Backend (PC): $ROOT_DIR/../backend_certs/"
+echo "Certificados do seu Backend (PC): ${ROOT_DIR}/../backend_certs/"

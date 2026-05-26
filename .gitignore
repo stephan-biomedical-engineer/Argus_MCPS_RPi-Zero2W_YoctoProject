@@ -1,47 +1,43 @@
-# Ignorar artefatos de build massivos
-build/tmp/
-build/downloads/
-build/sstate-cache/
-build/cache/
-build/bitbake-cookerdaemon.log
+# =============================================================================
+# Argus MCPS — .gitignore
+# =============================================================================
 
-# Ignorar firmwares de teste
+# --- Artefatos de build (Kas / Yocto) ---
+build/
+
+# --- Repos gerenciados pelo Kas (não precisa mais de submodules) ---
+poky/
+meta-raspberrypi/
+meta-openembedded/
+meta-rauc/
+
+# --- Certificados e chaves (gerados por generate_dev_certs.sh) ---
+meta-infusion-pump/recipes-connectivity/mosquitto/files/certs/
+meta-infusion-pump/recipes-core/bundles/files/*.pem
+meta-infusion-pump/recipes-support/rauc/files/keyring.pem
+backend_certs/
+
+# --- Build intermediário do C++ ---
+meta-infusion-pump/recipes-apps/infusion-control/files/src/build/
+
+# --- Firmwares de teste ---
 test_firmware/
 
-# Ignorar arquivos temporários do Python e Editor
+# --- Temporários de editor/IDE ---
 __pycache__/
 *.pyc
 .vscode/
 *.swp
+*~
+.idea/
 
-# (Opcional) Se quiser ignorar as pastas de terceiros caso não use submodules
-# Mas vamos usar submodules, então não precisa ignorar aqui, o git gerencia.
-build-systemd/
-build-optimized/
-
-meta-infusion-pump/recipes-connectivity/mosquitto/files/certs/
-meta-infusion-pump/recipes-core/bundles/files/*.pem
-meta-infusion-pump/recipes-support/rauc/files/*.pem
-meta-infusion-pump/recipes-support/rauc/files/
-meta-infusion-pump/recipes-apps/infusion-control/files/src/build/
-
-certs/
-
-poky/
-# Yocto/BitBake artifacts
+# --- Yocto/BitBake ---
 bitbake.lock
 pseudodone
 toaster.sqlite
 toaster_ui.log
-boot.txt
-update.txtbuild/
 
-
-recipes-core/bundles/files/*.pem
-recipes-support/rauc/files/*.pem
-recipes-connectivity/mosquitto/files/certs/*
-
-# Manter as pastas no git
-!recipes-core/bundles/files/.gitkeep
-!recipes-support/rauc/files/.gitkeep
-!recipes-connectivity/mosquitto/files/certs/.gitkeep
+# --- Manter pastas vazias no git ---
+!meta-infusion-pump/recipes-connectivity/mosquitto/files/certs/.gitkeep
+!meta-infusion-pump/recipes-core/bundles/files/.gitkeep
+!meta-infusion-pump/recipes-support/rauc/files/.gitkeep
