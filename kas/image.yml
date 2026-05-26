@@ -5,7 +5,6 @@
 header:
   version: 14
   includes:
-    - repo: this
-      file: kas/base.yml
+    - kas/base.yml
 
 target: infusion-image
