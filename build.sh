@@ -19,6 +19,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 KAS_DIR="${SCRIPT_DIR}/kas"
 LAYER_DIR="${SCRIPT_DIR}/meta-infusion-pump"
 
+# Determinar o executável do Kas (usar local se existir)
+KAS_BIN="kas-container"
+if [ -f "${SCRIPT_DIR}/kas-container" ]; then
+    KAS_BIN="${SCRIPT_DIR}/kas-container"
+fi
+
 # Cache persistente (pode ser sobrescrito via variáveis de ambiente)
 export DL_DIR="${DL_DIR:-${SCRIPT_DIR}/build/downloads}"
 export SSTATE_DIR="${SSTATE_DIR:-${SCRIPT_DIR}/build/sstate-cache}"
@@ -75,20 +81,47 @@ usage() {
 }
 
 # ---------------------------------------------------------------------------
+# Verificar submódulos antigos
+# ---------------------------------------------------------------------------
+check_legacy_submodules() {
+    local legacy_dirs=("poky" "meta-raspberrypi" "meta-openembedded" "meta-rauc")
+    local found_legacy=()
+    for d in "${legacy_dirs[@]}"; do
+        if [ -d "${SCRIPT_DIR}/$d" ]; then
+            found_legacy+=("$d")
+        fi
+    done
+
+    if [ ${#found_legacy[@]} -gt 0 ]; then
+        log_warn "Diretórios de submódulos antigos detectados: ${found_legacy[*]}"
+        log_warn "Isso causará o erro 'Repo is dirty - no checkout' no Kas."
+        log_warn "Para corrigir, execute o comando abaixo e rode ./build.sh novamente:"
+        echo -e "    ${BOLD}rm -rf ${found_legacy[*]}${NC}"
+        echo ""
+    fi
+}
+
+# ---------------------------------------------------------------------------
 # Pré-requisitos
 # ---------------------------------------------------------------------------
 check_prerequisites() {
     local ok=true
 
-    if ! command -v kas-container &>/dev/null; then
-        log_err "kas-container não encontrado no PATH."
+    check_legacy_submodules
+
+    if [ -f "$KAS_BIN" ]; then
+        log_ok "Kas: usando executável local ($KAS_BIN)"
+    elif command -v kas-container &>/dev/null; then
+        log_ok "Kas: encontrado no PATH (sistema)"
+    else
+        log_err "kas-container não encontrado no PATH nem localmente."
         echo ""
         echo "    Instale com:"
         echo "      pip3 install kas"
         echo ""
-        echo "    Ou baixe diretamente:"
-        echo "      curl -fsSL https://raw.githubusercontent.com/siemens/kas/master/kas-container -o ~/.local/bin/kas-container"
-        echo "      chmod +x ~/.local/bin/kas-container"
+        echo "    Ou baixe localmente:"
+        echo "      curl -fsSL https://raw.githubusercontent.com/siemens/kas/master/kas-container -o kas-container"
+        echo "      chmod +x kas-container"
         ok=false
     fi
 
@@ -163,7 +196,7 @@ run_build() {
     log_info "Config: ${config}"
     echo ""
 
-    kas-container build "${config}"
+    "$KAS_BIN" build "${config}"
 
     echo ""
     log_ok "Build concluído: ${label}"
@@ -175,7 +208,7 @@ run_shell() {
     log_info "Use 'bitbake <target>' para builds manuais."
     echo ""
 
-    kas-container shell "${KAS_DIR}/image.yml"
+    "$KAS_BIN" shell "${KAS_DIR}/image.yml"
 }
 
 run_clean() {
