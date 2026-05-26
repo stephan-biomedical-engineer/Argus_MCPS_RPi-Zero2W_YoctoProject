@@ -12,8 +12,8 @@ distro: poky
 # Repositórios e Layers
 # =============================================================================
 # Cada repo é baixado e versionado pelo Kas.
-# Os refspecs estão pinados nos commits testados do branch scarthgap.
-# Para atualizar, troque o refspec pelo novo commit desejado.
+# Os commits estão pinados nos hashes testados do branch scarthgap.
+# Para atualizar, troque o commit pelo novo hash desejado.
 # =============================================================================
 repos:
 
@@ -24,7 +24,8 @@ repos:
 
   poky:
     url: "https://git.yoctoproject.org/poky"
-    refspec: 553530a8acce3b078473c0fa512246a3e84d46bf
+    branch: scarthgap
+    commit: 553530a8acce3b078473c0fa512246a3e84d46bf
     layers:
       meta:
       meta-poky:
@@ -32,11 +33,13 @@ repos:
 
   meta-raspberrypi:
     url: "https://git.yoctoproject.org/meta-raspberrypi"
-    refspec: 2c646d29912dcc873469a57b1c207e1549c5094d
+    branch: scarthgap
+    commit: 2c646d29912dcc873469a57b1c207e1549c5094d
 
   meta-openembedded:
     url: "https://git.openembedded.org/meta-openembedded"
-    refspec: e76bf51a92b41d4cb185fc164ae43a863910ccd1
+    branch: scarthgap
+    commit: e76bf51a92b41d4cb185fc164ae43a863910ccd1
     layers:
       meta-oe:
       meta-python:
@@ -44,7 +47,8 @@ repos:
 
   meta-rauc:
     url: "https://github.com/rauc/meta-rauc.git"
-    refspec: e9d65639be4d8f150fbc7435e2ea399e2671fde1
+    branch: scarthgap
+    commit: e9d65639be4d8f150fbc7435e2ea399e2671fde1
 
 # =============================================================================
 # local.conf
