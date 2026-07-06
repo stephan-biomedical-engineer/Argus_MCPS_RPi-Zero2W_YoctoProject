@@ -3,6 +3,15 @@ ctrl_interface_group=0
 update_config=1
 
 network={
+    ssid="lab2_2.4Ghz"
+    psk="lmest123"
+    proto=RSN
+    key_mgmt=WPA-PSK
+    pairwise=CCMP
+    auth_alg=OPEN
+}
+
+network={
     ssid="Salete"
     psk="salt1234"
     proto=RSN
