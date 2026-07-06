@@ -65,19 +65,6 @@ bool HalSpi::open_device()
         return false;
     }
 
-    // 3. LIMPEZA DE BARRAMENTO (O "Pulo do Gato")
-    // Quando o STM32 reinicia, o SPI pode ter ficado com bits parciais.
-    // Enviamos 64 bytes de Zeros para limpar o buffer do driver do Kernel.
-    uint8_t dummy_tx[64] = {0};
-    uint8_t dummy_rx[64] = {0};
-    
-    // Usamos o método transfer interno. Se falhar aqui, o driver está ruim.
-    if(!transfer(dummy_tx, dummy_rx, 64)) {
-        std::cerr << "[SPI] Erro no flush inicial." << std::endl;
-        close_device();
-        return false;
-    }
-
     std::cout << "[SPI] Barramento reinicializado: " << _stored_path << std::endl;
     return true;
 }

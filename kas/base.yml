@@ -5,7 +5,7 @@
 header:
   version: 14
 
-machine: raspberrypi0-2w
+machine: raspberrypi3
 distro: poky
 
 # =============================================================================
@@ -97,8 +97,8 @@ local_conf_header:
     PREFERRED_VERSION_linux-raspberrypi = "6.1.%"
     KERNEL_IMAGETYPE = "zImage"
     KERNEL_DEVICETREE = " \
-        bcm2710-rpi-zero-2.dtb \
-        bcm2710-rpi-zero-2-w.dtb \
+        bcm2710-rpi-3-b.dtb \
+        bcm2710-rpi-3-b-plus.dtb \
     "
 
   # --- Systemd (substitui sysvinit) ---
@@ -120,7 +120,7 @@ local_conf_header:
     IMAGE_INSTALL:append = " kernel-devicetree"
     DT_OVERLAY_CONFIG:append = " dtparam=audio=off"
     RPI_EXTRA_CONFIG += " \n\
-    dtoverlay=spi0-2cs,cs0_pin=8,cs1_pin=17 \n\
+    dtoverlay=spi0-2cs,cs0_pin=8,cs1_pin=7 \n\
     dtparam=pwm=on \n\
     dtoverlay=pwm-2chan \n\
     dtparam=pin=18,func=2 \n\

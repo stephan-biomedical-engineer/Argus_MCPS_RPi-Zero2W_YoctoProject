@@ -3,8 +3,8 @@ ctrl_interface_group=0
 update_config=1
 
 network={
-    ssid="NOME_DA_SUA_REDE_1"
-    psk="SUA_SENHA_AQUI"
+    ssid="Salete"
+    psk="salt1234"
     proto=RSN
     key_mgmt=WPA-PSK
     pairwise=CCMP
