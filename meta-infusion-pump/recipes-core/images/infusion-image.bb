@@ -66,7 +66,8 @@ DEPENDS += "u-boot-script-infusion"
 IMAGE_BOOT_FILES:append = " \
     boot-rauc.scr;boot.scr \
     ${KERNEL_IMAGETYPE};zImage \
-    bcm2710-rpi-zero-2-w.dtb;bcm2710-rpi-zero-2-w.dtb \
+    bcm2710-rpi-3-b.dtb;bcm2710-rpi-3-b.dtb \
+    bcm2710-rpi-3-b-plus.dtb;bcm2710-rpi-3-b-plus.dtb \
     overlays/*;overlays/ \
 "
 
