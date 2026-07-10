@@ -31,6 +31,8 @@ IMAGE_INSTALL:append = " \
     kernel-module-spi-bcm2835 \
     kernel-module-spidev \
     kernel-module-i2c-dev \
+    stress \
+    iperf3 \
 "
 
 IMAGE_INSTALL:append = " \

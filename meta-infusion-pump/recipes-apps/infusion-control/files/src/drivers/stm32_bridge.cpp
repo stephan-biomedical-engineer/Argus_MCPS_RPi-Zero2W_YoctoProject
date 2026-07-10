@@ -67,6 +67,15 @@ bool Stm32Bridge::send_command(cmd_ids_t req_id, cmd_cmds_t* req_data, cmd_cmds_
     // Garante tamanho mínimo de transferência (64 bytes para manter o clock)
     size_t xfer_len = (encoded_size < 64) ? 64 : encoded_size;
 
+    // INJEÇÃO DE FALHA (TESTE DE RESILIÊNCIA ARTIGO CIENTÍFICO)
+    static int fault_counter = 0;
+    fault_counter++;
+    if (fault_counter >= 100) {
+        fault_counter = 0;
+        std::cout << "\n[!] INJETANDO FALHA DE CRC INTENCIONAL [!] (Teste de Auto-healing)\n" << std::endl;
+        _tx_buf[xfer_len - 1] ^= 0xFF; // Corrompe o último byte do pacote (metade do CRC)
+    }
+
     // 2. Envia o Comando
     if(!_safe_transfer(xfer_len))
     {
