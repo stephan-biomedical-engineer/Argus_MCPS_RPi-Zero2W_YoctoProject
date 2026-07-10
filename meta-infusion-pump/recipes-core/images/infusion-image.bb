@@ -65,19 +65,17 @@ BAD_RECOMMENDATIONS += "rauc-conf"
 
 DEPENDS += "u-boot-script-infusion"
 
+# O Yocto considera a RPi Zero 2W como uma subclasse da RPi 3, o que faz os overrides conflitarem no :append.
+# O uso de uma variável intermediária resolve isso usando a precedência de especificidade do Yocto.
+MACHINE_DTBS_TO_COPY ?= ""
+MACHINE_DTBS_TO_COPY:raspberrypi3 = "bcm2710-rpi-3-b.dtb;bcm2710-rpi-3-b.dtb bcm2710-rpi-3-b-plus.dtb;bcm2710-rpi-3-b-plus.dtb"
+MACHINE_DTBS_TO_COPY:raspberrypi0-2w = "bcm2710-rpi-zero-2-w.dtb;bcm2710-rpi-zero-2-w.dtb"
+
 IMAGE_BOOT_FILES:append = " \
     boot-rauc.scr;boot.scr \
     ${KERNEL_IMAGETYPE};zImage \
+    ${MACHINE_DTBS_TO_COPY} \
     overlays/*;overlays/ \
-"
-
-IMAGE_BOOT_FILES:append:raspberrypi0-2w = " \
-    bcm2710-rpi-zero-2-w.dtb;bcm2710-rpi-zero-2-w.dtb \
-"
-
-IMAGE_BOOT_FILES:append:raspberrypi3 = " \
-    bcm2710-rpi-3-b.dtb;bcm2710-rpi-3-b.dtb \
-    bcm2710-rpi-3-b-plus.dtb;bcm2710-rpi-3-b-plus.dtb \
 "
 
 create_version_file() {
