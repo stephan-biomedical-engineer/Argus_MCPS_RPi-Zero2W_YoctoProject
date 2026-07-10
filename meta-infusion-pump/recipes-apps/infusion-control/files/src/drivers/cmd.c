@@ -347,6 +347,7 @@ bool cmd_decode_action_bolus_req(cmd_cmds_t* cmd, uint8_t* buffer, size_t size)
     uint8_t* pbuf = buffer;
     if(size != CMD_ACTION_BOLUS_REQ_SIZE)
         return false;
+    
     cmd->bolus_req.payload.bolus_volume = utl_io_get32_fl_ap(pbuf);
     cmd->bolus_req.payload.bolus_rate = utl_io_get32_fl_ap(pbuf);
     return true;

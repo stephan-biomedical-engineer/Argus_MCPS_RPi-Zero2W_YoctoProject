@@ -79,7 +79,7 @@ IMAGE_INSTALL:append = " kernel-devicetree"
 DT_OVERLAY_CONFIG:append = " dtparam=audio=off"
 
 RPI_EXTRA_CONFIG += " \n\
-dtoverlay=spi0-2cs,cs0_pin=8,cs1_pin=17 \n\
+dtoverlay=spi0-2cs,cs0_pin=8,cs1_pin=7 \n\
 dtparam=pwm=on \n\
 dtoverlay=pwm-2chan \n\
 dtparam=pin=18,func=2 \n\

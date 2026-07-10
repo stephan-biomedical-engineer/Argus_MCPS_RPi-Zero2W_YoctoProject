@@ -197,7 +197,7 @@ CommandStatus InfusionManager::start_infusion()
     std::lock_guard<std::mutex> lock(_spi_mutex);
 
     if(!_bridge.send_command(CMD_ACTION_RUN_REQ_ID, &req, &res))
-        return res.action_res.status;
+        return CMD_TRANSPORT_ERROR;
 
     return static_cast<CommandStatus>(res.action_res.status);
 }
@@ -209,7 +209,7 @@ CommandStatus InfusionManager::pause_infusion()
     std::lock_guard<std::mutex> lock(_spi_mutex);
 
     if(!_bridge.send_command(CMD_ACTION_PAUSE_REQ_ID, &req, &res))
-        return res.action_res.status;
+        return CMD_TRANSPORT_ERROR;
 
     return static_cast<CommandStatus>(res.action_res.status);
 }
@@ -221,7 +221,7 @@ CommandStatus InfusionManager::stop_infusion()
     std::lock_guard<std::mutex> lock(_spi_mutex);
 
     if(!_bridge.send_command(CMD_ACTION_ABORT_REQ_ID, &req, &res))
-        return res.action_res.status;
+        return CMD_TRANSPORT_ERROR;
 
     return static_cast<CommandStatus>(res.action_res.status);
 }
@@ -237,7 +237,7 @@ CommandStatus InfusionManager::set_config(uint32_t volume_ml, uint32_t rate_ml_h
     std::lock_guard<std::mutex> lock(_spi_mutex);
 
     if(!_bridge.send_command(CMD_SET_CONFIG_REQ_ID, &req, &res))
-        return res.action_res.status;
+        return CMD_TRANSPORT_ERROR;
 
     return static_cast<CommandStatus>(res.config_res.status);
 }

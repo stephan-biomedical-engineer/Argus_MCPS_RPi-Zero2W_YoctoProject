@@ -33,7 +33,17 @@ bool Stm32Bridge::_safe_transfer(size_t len)
     std::this_thread::sleep_for(std::chrono::microseconds(100));
 
     // 3. Transferência SPI
-    return _spi.transfer(_tx_buf, _rx_buf, len);
+    bool res = _spi.transfer(_tx_buf, _rx_buf, len);
+    
+    // 4. Aguarda STM32 confirmar que recebeu baixando o pino (com timeout)
+    int wait_low = 100; // 100 * 10us = 1ms
+    while(_ready_pin.get() && wait_low > 0)
+    {
+        std::this_thread::sleep_for(std::chrono::microseconds(10));
+        wait_low--;
+    }
+    
+    return res;
 }
 
 bool Stm32Bridge::send_command(cmd_ids_t req_id, cmd_cmds_t* req_data, cmd_cmds_t* res_data)
@@ -57,11 +67,23 @@ bool Stm32Bridge::send_command(cmd_ids_t req_id, cmd_cmds_t* req_data, cmd_cmds_
     // Garante tamanho mínimo de transferência (64 bytes para manter o clock)
     size_t xfer_len = (encoded_size < 64) ? 64 : encoded_size;
 
+    // INJEÇÃO DE FALHA (TESTE DE RESILIÊNCIA ARTIGO CIENTÍFICO)
+    static int fault_counter = 0;
+    fault_counter++;
+    if (fault_counter >= 100) {
+        fault_counter = 0;
+        std::cout << "\n[!] INJETANDO FALHA DE CRC INTENCIONAL [!] (Teste de Auto-healing)\n" << std::endl;
+        _tx_buf[xfer_len - 1] ^= 0xFF; // Corrompe o último byte do pacote (metade do CRC)
+    }
+
     // 2. Envia o Comando
     if(!_safe_transfer(xfer_len))
     {
         return false;
     }
+
+    // Delay de 2ms para evitar race condition (dá tempo do STM32 acordar a thread e baixar o Ready Pin)
+    std::this_thread::sleep_for(std::chrono::milliseconds(2));
 
     // 3. Lê a Resposta (Imediatamente)
     // Prepara Dummys
@@ -73,12 +95,12 @@ bool Stm32Bridge::send_command(cmd_ids_t req_id, cmd_cmds_t* req_data, cmd_cmds_
         return false;
     }
 
-    // printf("[SPI RAW RX]: ");
-    // for(int rx_byte = 0; rx_byte < 16; rx_byte++)
-    // {
-    //     printf("%02X ", _rx_buf[rx_byte]);
-    // }
-    // printf("\n");
+    printf("[SPI RAW RX]: ");
+    for(int rx_byte = 0; rx_byte < 16; rx_byte++)
+    {
+        printf("%02X ", _rx_buf[rx_byte]);
+    }
+    printf("\n");
 
     // 4. SCANNER DE SOF (A Mágica da Sincronia)
     // Em vez de assumir que a resposta está no byte 0 ou 2, procuramos a assinatura.
@@ -96,14 +118,12 @@ bool Stm32Bridge::send_command(cmd_ids_t req_id, cmd_cmds_t* req_data, cmd_cmds_
 
     if(sof_index < 0)
     {
-        std::cerr << "[BRIDGE] Erro: SOF desalinhado.";
-        // Se não achou SOF, é erro de comunicação ou o STM32 não respondeu.
-        // std::cerr << "[BRIDGE] Erro: SOF nao encontrado. Dump RX (16 bytes): ";
-        // for(int rx_byte = 0; rx_byte < 16; rx_byte++)
-        // {
-        //     printf("%02X ", _rx_buf[rx_byte]);
-        // }
-        // printf("\n");
+        std::cerr << "[BRIDGE] Erro: SOF nao encontrado. Dump RX (16 bytes): ";
+        for(int rx_byte = 0; rx_byte < 16; rx_byte++)
+        {
+            printf("%02X ", _rx_buf[rx_byte]);
+        }
+        printf("\n");
 
         return false;
     }
