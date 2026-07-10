@@ -169,11 +169,12 @@ void InfusionManager::monitor_loop()
 
             if(consecutive_errors >= 5)
             {
-                std::cerr << "[MANAGER] Perda de sincronia persistente. Resetando driver...\n";
-                std::lock_guard<std::mutex> lock(_spi_mutex);
-                _bridge.suspend_hardware();
-                std::this_thread::sleep_for(std::chrono::milliseconds(200));
-                _bridge.resume_hardware();
+                std::cerr << "[MANAGER] Perda de sincronia persistente ou Deadlock DMA detectado.\n";
+                std::cerr << "[MANAGER] Acionando Hardware Reset (Out-of-band) no STM32...\n";
+                
+                // O hard_reset_stm32() já cuida do _spi_mutex e do suspend/resume_hardware internamente
+                hard_reset_stm32();
+                
                 consecutive_errors = 0;
             }
             else
