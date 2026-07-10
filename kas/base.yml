@@ -108,7 +108,7 @@ local_conf_header:
   # --- Hardware: I2C, SPI, UART, PWM ---
   hardware: |
     ENABLE_I2C = "1"
-    ENABLE_SPI = "1"
+    ENABLE_SPI_BUS = "1"
     ENABLE_UART = "1"
     ENABLE_PWM = "1"
     KERNEL_DEVICETREE:append = " overlays/pwm-2chan.dtbo"
