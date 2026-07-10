@@ -227,16 +227,23 @@ run_clean() {
 # ---------------------------------------------------------------------------
 main() {
     local command=""
+    local machine_target="raspberrypi0-2w" # default
     local skip_certs=false
 
     # Parse argumentos
-    for arg in "$@"; do
-        case "$arg" in
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
             image|bundle|all|shell|clean)
-                command="$arg"
+                command="$1"
+                shift
+                ;;
+            raspberrypi3|raspberrypi0-2w)
+                machine_target="$1"
+                shift
                 ;;
             --no-certs)
                 skip_certs=true
+                shift
                 ;;
             --help|-h)
                 banner
@@ -244,7 +251,7 @@ main() {
                 exit 0
                 ;;
             *)
-                log_err "Argumento desconhecido: $arg"
+                log_err "Argumento desconhecido: $1"
                 echo ""
                 usage
                 exit 1
@@ -274,20 +281,26 @@ main() {
 
     prepare_cache
 
+    local machine_yml="${KAS_DIR}/machines/${machine_target}.yml"
+    if [ ! -f "$machine_yml" ]; then
+        log_err "Target de maquina invalido: $machine_target. Arquivo $machine_yml nao encontrado."
+        exit 1
+    fi
+
     # Execução
     case "$command" in
         image)
-            run_build "${KAS_DIR}/image.yml" "Imagem SD Card (infusion-image)"
+            run_build "${machine_yml}:${KAS_DIR}/image.yml" "Imagem SD Card (infusion-image) - ${machine_target}"
             ;;
         bundle)
-            run_build "${KAS_DIR}/bundle.yml" "Bundle OTA (infusion-bundle)"
+            run_build "${machine_yml}:${KAS_DIR}/bundle.yml" "Bundle OTA (infusion-bundle) - ${machine_target}"
             ;;
         all)
-            run_build "${KAS_DIR}/image.yml" "Imagem SD Card (infusion-image)"
-            run_build "${KAS_DIR}/bundle.yml" "Bundle OTA (infusion-bundle)"
+            run_build "${machine_yml}:${KAS_DIR}/image.yml" "Imagem SD Card (infusion-image) - ${machine_target}"
+            run_build "${machine_yml}:${KAS_DIR}/bundle.yml" "Bundle OTA (infusion-bundle) - ${machine_target}"
             ;;
         shell)
-            run_shell
+            "$KAS_BIN" shell "${machine_yml}:${KAS_DIR}/image.yml"
             ;;
     esac
 

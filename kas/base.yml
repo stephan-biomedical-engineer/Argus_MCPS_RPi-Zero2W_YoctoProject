@@ -5,7 +5,6 @@
 header:
   version: 14
 
-machine: raspberrypi3
 distro: poky
 
 # =============================================================================
@@ -96,10 +95,6 @@ local_conf_header:
   kernel: |
     PREFERRED_VERSION_linux-raspberrypi = "6.1.%"
     KERNEL_IMAGETYPE = "zImage"
-    KERNEL_DEVICETREE = " \
-        bcm2710-rpi-3-b.dtb \
-        bcm2710-rpi-3-b-plus.dtb \
-    "
 
   # --- Systemd (substitui sysvinit) ---
   systemd: |
